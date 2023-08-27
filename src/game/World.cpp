@@ -417,6 +417,7 @@ bool World::RemoveQueuedSession(WorldSession* sess)
 
 void World::LoadModuleConfig()
 {
+    _moduleConfig.clear();
     QueryResult* result = WorldDatabase.PQuery("SELECT `id`, `config`, `value` FROM module_config");
     uint64 count = 0;
 
@@ -500,6 +501,8 @@ void World::LoadConfigSettings(bool reload)
             sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "World settings reload fail: can't read settings from %s.", sConfig.GetFilename().c_str());
             return;
         }
+
+        LoadModuleConfig();
     }
 
     // Read the version of the configuration file and warn the user in case of emptiness or mismatch
