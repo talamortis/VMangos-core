@@ -107,6 +107,15 @@ public:
 
     // Called when a player is killed by a creature
     virtual void OnPlayerKilledByCreature(Creature* /*killer*/, Player* /*killed*/) { }
+
+    // Called When a player Loots an item
+    virtual void OnLootItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/, uint64 /*itemGUID*/) { }
+
+    // Called when player creates an item
+    virtual void OnCreateItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/) { }
+
+    // Called when player recieves item from quest reward
+    virtual void OnQuestRewardItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/) { }
 };
 
 
@@ -128,6 +137,9 @@ public: /* PlayerScript */
     void OnPVPKill(Player* killer, Player* killed);
     void OnCreatureKill(Player* killer, Creature* killed);
     void OnPlayerKilledByCreature(Creature* killer, Player* killed);
+    void OnLootItem(Player* player, Item* item, uint32 count, uint64 lootGUID);
+    void OnCreateItem(Player* player, Item* item, uint32 count);
+    void OnQuestRewardItem(Player* player, Item* item, uint32 count);
 
 
 public: /* ScriptRegistry */

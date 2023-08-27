@@ -119,6 +119,21 @@ void ScriptDevMgr::OnGivePlayerXP(Player* player, uint32& amount, Unit* victim)
     FOREACH_SCRIPT(PlayerScript)->OnGiveXP(player, amount, victim);
 }
 
+void ScriptDevMgr::OnLootItem(Player* player, Item* item, uint32 count, uint64 lootGUID)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnLootItem(player, item, count, lootGUID);
+}
+
+void ScriptDevMgr::OnCreateItem(Player* player, Item* item, uint32 count)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnCreateItem(player, item, count);
+}
+
+void ScriptDevMgr::OnQuestRewardItem(Player* player, Item* item, uint32 count)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnQuestRewardItem(player, item, count);
+}
+
 PlayerScript::PlayerScript(const char* name)
     : ScriptObject(name)
 {

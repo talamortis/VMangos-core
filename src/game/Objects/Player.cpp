@@ -13431,6 +13431,8 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, WorldObject* questE
             {
                 Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
                 SendNewItem(item, pQuest->RewChoiceItemCount[reward], true, false, false, false);
+
+                sScriptDevMgr.OnQuestRewardItem(this, item, pQuest->RewChoiceItemCount[reward]);
             }
         }
     }
@@ -13446,6 +13448,8 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, WorldObject* questE
                 {
                     Item* item = StoreNewItem(dest, itemId, true, Item::GenerateItemRandomPropertyId(itemId));
                     SendNewItem(item, pQuest->RewItemCount[i], true, false, false, false);
+
+                    sScriptDevMgr.OnQuestRewardItem(this, item, pQuest->RewItemCount[i]);
                 }
             }
         }
