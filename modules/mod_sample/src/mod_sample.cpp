@@ -9,6 +9,11 @@ public:
     {
         ChatHandler(player).PSendSysMessage("Hook works fine!");
     }
+
+    void OnGiveXP(Player* player, uint32& xp, Unit* victim)
+    {
+        ChatHandler(player).PSendSysMessage("You just recieved %u xp", xp);
+    }
 };
 
 void Addmod_sampleScripts()
