@@ -98,6 +98,15 @@ public:
 
     // Called when Player Changed Level
     virtual void OnLevelChanged(Player* /*player*/, uint8 /*oldLevel*/, uint8 /*newLevel*/) { }
+
+    // Called when a player kills another player
+    virtual void OnPVPKill(Player* /*killer*/, Player* /*killed*/) { }
+
+    // Called when a player kills a creature
+    virtual void OnCreatureKill(Player* /*killer*/, Creature* /*killed*/) { }
+
+    // Called when a player is killed by a creature
+    virtual void OnPlayerKilledByCreature(Creature* /*killer*/, Player* /*killed*/) { }
 };
 
 
@@ -116,6 +125,9 @@ public: /* PlayerScript */
     void OnGivePlayerXP(Player* player, uint32& amount, Unit* victim);
     void OnPlayerLogin(Player* player);
     void OnPlayerLevelChanged(Player* player, uint8 oldLevel, uint8 newLevel);
+    void OnPVPKill(Player* killer, Player* killed);
+    void OnCreatureKill(Player* killer, Creature* killed);
+    void OnPlayerKilledByCreature(Creature* killer, Player* killed);
 
 
 public: /* ScriptRegistry */

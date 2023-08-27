@@ -89,6 +89,21 @@ ScriptDevMgr::~ScriptDevMgr()
    #
    ############################################# */
 
+void ScriptDevMgr::OnPVPKill(Player* killer, Player* killed)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPVPKill(killer, killed);
+}
+
+void ScriptDevMgr::OnCreatureKill(Player* killer, Creature* killed)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnCreatureKill(killer, killed);
+}
+
+void ScriptDevMgr::OnPlayerKilledByCreature(Creature* killer, Player* killed)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerKilledByCreature(killer, killed);
+}
+
 void ScriptDevMgr::OnPlayerLogin(Player* player)
 {
     FOREACH_SCRIPT(PlayerScript)->OnLogin(player);
