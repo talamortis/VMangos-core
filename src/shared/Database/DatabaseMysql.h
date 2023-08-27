@@ -89,6 +89,8 @@ class MySQLConnection : public SqlConnection
         QueryNamedResult* QueryNamed(char const* sql) override;
         bool Execute(char const* sql) override;
 
+        bool ExecuteFile(char const* file);
+
         unsigned long escape_string(char* to, char const* from, unsigned long length) override;
 
         bool BeginTransaction() override;
