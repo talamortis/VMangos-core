@@ -415,6 +415,81 @@ bool World::RemoveQueuedSession(WorldSession* sess)
     return found;
 }
 
+void World::LoadModuleConfig()
+{
+    QueryResult* result = WorldDatabase.PQuery("SELECT `id`, `config`, `value` FROM module_config");
+    uint64 count = 0;
+
+    if (result)
+    {
+        do
+        {
+            Field* field = result->Fetch();
+            ModuleConfig mod;
+
+            uint32 id = field[0].GetUInt32();
+            mod.config = field[1].GetString();
+            mod.value = field[2].GetString();
+
+            _moduleConfig[mod.config] = mod;
+
+            count++;
+        } while (result->NextRow());
+    }
+
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, ">> Loaded %lu module config", count);
+}
+
+//sModuleMgr.GetBool(std::string conf, bool, default)
+bool World::GetModuleBoolConfig(std::string conf, bool value)
+{
+    auto it = _moduleConfig.find(conf.c_str());
+
+    // If we can not find the config at all then use value
+    if (it == _moduleConfig.end())
+        return value;
+    else
+    {
+        ModuleConfig Mod = it->second;
+
+        const char* str = Mod.value.c_str();
+        if (strcmp(str, "true") == 0 || strcmp(str, "TRUE") == 0 ||
+            strcmp(str, "yes") == 0 || strcmp(str, "YES") == 0 ||
+            strcmp(str, "1") == 0)
+            return true;
+        else
+            return false;
+    }
+}
+
+std::string World::GetModuleStringConfig(std::string conf, std::string value)
+{
+    auto it = _moduleConfig.find(conf.c_str());
+
+    if (it == _moduleConfig.end())
+        return value.c_str();
+    else
+    {
+        ModuleConfig Mod = it->second;
+        return Mod.value.c_str();
+    }
+
+}
+
+int32 World::GetModuleIntConfig(std::string conf, uint32 value)
+{
+    auto it = _moduleConfig.find(conf.c_str());
+
+    if (it == _moduleConfig.end())
+        return value;
+    else
+    {
+        ModuleConfig Mod = it->second;
+        return (uint32)atoi(Mod.value.c_str());
+    }
+
+}
+
 // Initialize config values
 void World::LoadConfigSettings(bool reload)
 {
@@ -1211,163 +1286,6 @@ void World::LoadConfigSettings(bool reload)
     sLog.InitSmartlogGuids(sConfig.GetStringDefault("Smartlog.ExtraGuids", ""));
 }
 
-//TODO ExecuteFile
-void World::LoadModSQLUpdates()
-{
-    const struct
-    {
-        // db pointer
-        DatabaseMysql* db;
-        // path - modules/mod_xxx/sql/(path)
-        const char* path;
-    } updates[]
-        =
-    {
-        { &LoginDatabase,     "realmd" },
-        { &WorldDatabase,     "world" },
-        { &CharacterDatabase, "characters" }
-    };
-
-    // directory path
-    std::string path;
-    // label used for console output
-    std::stringstream label;
-    // files to be applied
-    std::vector<std::string> files;
-    // already applied before (from db)
-    std::set<std::string> alreadyAppliedFiles;
-
-    // get folders in modules/
-    if (ACE_DIR* dira = ACE_OS::opendir(m_ModSQLUpdatesPath.c_str()))
-    {
-        while (ACE_DIRENT* directory = ACE_OS::readdir(dira))
-        {
-            // Skip the ".." and "." files.
-            if (ACE::isdotdir(directory->d_name) == true)
-                continue;
-
-            // refresh path
-            path = m_ModSQLUpdatesPath;
-#if PLATFORM == PLATFORM_WINDOWS
-            // get mod directory list
-            path += directory->d_name;
-            path += '\\';
-#else
-            // get mod directory list
-            path += directory->d_name;
-            path += '/';
-#endif
-
-            ACE_stat stat_buf;
-            if (ACE_OS::lstat(path.c_str(), &stat_buf) == -1)
-            {
-                sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "directory error %s: %s", path.c_str(), strerror(errno));
-                continue;
-            }
-            switch (stat_buf.st_mode & S_IFMT)
-            {
-            case S_IFDIR://is directory?
-            {
-                // iterate all three databases
-                for (uint32 i = 0; i < 3; i++)
-                {
-                    // clear from previous iteration
-                    files.clear();
-                    // clear from previous iteration
-                    alreadyAppliedFiles.clear();
-
-                    // directory path
-                    std::string pathsql;
-                    pathsql = path;
-                    // refresh path
-#if PLATFORM == PLATFORM_WINDOWS
-                    // get sub folder list
-                    pathsql += "sql";
-                    pathsql += '\\';
-                    pathsql += updates[i].path;
-                    pathsql += '\\';
-#else
-                    // get sub folder list
-                    pathsql += "sql";
-                    pathsql += '/';
-                    pathsql += updates[i].path;
-                    pathsql += '/';
-#endif
-
-
-                    // Get updates that were alraedy applied before
-                    if (QueryResult* result = updates[i].db->Query("SELECT `update` FROM `updates`"))
-                    {
-                        do
-                            alreadyAppliedFiles.insert(result->Fetch()[0].GetString());
-                        while (result->NextRow());
-                    }
-
-                    // Record current working directory
-                    char cwd[PATH_MAX];
-                    ACE_OS::getcwd(cwd, PATH_MAX);
-
-                    // Change current directory to modules/mod_xxx/sql(path)
-                    if (-1 == ACE_OS::chdir(pathsql.c_str()))
-                        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Can't change directory to %s: %s", pathsql.c_str(), strerror(errno));
-
-                    // get files in modules/mod_xxx/sql/(path)/ directory
-                    if (ACE_DIR* dir = ACE_OS::opendir(pathsql.c_str()))
-                    {
-                        while (ACE_DIRENT* entry = ACE_OS::readdir(dir))
-                        {
-                            // always apply if it is a conf file
-                            if (!strcmp(entry->d_name + strlen(entry->d_name) - 9, ".conf.sql"))
-                                files.push_back(entry->d_name);
-                            // continue only if file is not already applied
-                            if (alreadyAppliedFiles.find(entry->d_name) == alreadyAppliedFiles.end())
-                                // make sure the file is an .sql one
-                                if (!strcmp(entry->d_name + strlen(entry->d_name) - 4, ".sql"))
-                                    files.push_back(entry->d_name);
-                        }
-                        ACE_OS::closedir(dir);
-                    }
-                    else
-                        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Can't open %s: %s", pathsql.c_str(), strerror(errno));
-
-                    // sort our files in ascending order
-                    std::sort(files.begin(), files.end());
-
-                    // iterate not applied files now
-                    for (size_t j = 0; j < files.size(); ++j)
-                    {
-                        label.str("");
-                        label << "Applying " << files[j].c_str() << " (" << (j + 1) << '/' << files.size() << ')';
-                        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, label.str().c_str());
-
-                        if (updates[i].db->ExecuteFile(files[j].c_str()))
-                        {
-                            updates[i].db->escape_string(files[j]);
-                            updates[i].db->DirectPExecute("INSERT INTO `updates` VALUES ('%s', NOW())", files[j].c_str());
-                        }
-                        else
-                            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Failed to apply %s. See db_errors.log for more details.", files[j].c_str());
-                    }
-
-                    // Return to original working directory
-                    if (-1 == ACE_OS::chdir(cwd))
-                        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Can't change directory to %s: %s", cwd, strerror(errno));
-                }
-            }
-            break;
-
-            default: // Must be some other type of file (PIPE/FIFO/device)
-                break;
-            }
-        }
-        ACE_OS::closedir(dira);
-    }
-    else
-        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Can't open %s: %s", m_ModSQLUpdatesPath.c_str(), strerror(errno));
-
-
-
-}
 
 void CharactersDatabaseWorkerThread()
 {
@@ -1428,6 +1346,9 @@ void World::SetInitialWorldSettings()
 
     // Time server startup
     uint32 uStartTime = WorldTimer::getMSTime();
+
+    // Initialize module config settings
+    LoadModuleConfig();
 
     // Initialize config settings
     LoadConfigSettings();
