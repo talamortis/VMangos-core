@@ -274,7 +274,7 @@ QueryNamedResult* MySQLConnection::QueryNamed(char const* sql)
 }
 
 
-bool MySQLConnection::ExecuteFile(const char* file)
+bool MySQLConnection::ExecuteFile(char const* file)
 {
     if (!mMysql)
         return false;
