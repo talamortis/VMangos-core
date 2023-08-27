@@ -59,8 +59,6 @@ class SqlConnection
         //public methods for making requests
         virtual bool Execute(char const* sql) = 0;
 
-        virtual bool ExecuteFile(char const* file) = 0;
-
         //escape string generation
         virtual unsigned long escape_string(char* to, char const* from, unsigned long length) { strncpy(to,from,length); return length; }
 
@@ -151,15 +149,6 @@ class Database
 
             SqlConnection::Lock guard(m_pAsyncConn);
             return guard->Execute(sql);
-        }
-
-        inline bool ExecuteFile(char const* file)
-        {
-            if (!m_pAsyncConn)
-                return false;
-
-            SqlConnection::Lock guard(m_pAsyncConn);
-            return guard->ExecuteFile(file);
         }
 
         bool DirectPExecute(char const* format,...) ATTR_PRINTF(2,3);
