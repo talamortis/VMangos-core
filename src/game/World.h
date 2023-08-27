@@ -717,6 +717,13 @@ struct AccountPlayHistory
     time_t playedTime; // reset after 5 hours offline time
 };
 
+struct ModuleConfig
+{
+    uint32 id;
+    std::string config;
+    std::string value;
+};
+
 class ThreadPool;
 
 // The World
@@ -801,6 +808,13 @@ class World
 
         void SetInitialWorldSettings();
         void LoadConfigSettings(bool reload = false);
+
+        /*Module Configs*/
+        void LoadModuleConfig();
+        bool GetModuleBoolConfig(std::string config, bool value);
+        std::string GetModuleStringConfig(std::string config);
+        int32 GetModuleIntConfig(std::string conf, uint32 value);
+        void LoadModSQLUpdates();
 
         void SendWorldText(int32 string_id, ...);
         void SendBroadcastTextToWorld(uint32 textId);
@@ -1047,6 +1061,9 @@ class World
         static uint32 m_currentDiff;
 
         Messager<World> m_messager;
+
+        std::unordered_map<std::string, ModuleConfig> _moduleConfig;
+        std::string m_ModSQLUpdatesPath;
 };
 
 extern uint32 realmID;
