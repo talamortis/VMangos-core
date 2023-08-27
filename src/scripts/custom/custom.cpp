@@ -16,9 +16,23 @@
 
 #include "scriptPCH.h"
 #include "custom.h"
+#include "ScriptDevMgr.h"
+
+class OnLoginTest : public PlayerScript
+{
+    public :
+        OnLoginTest() : PlayerScript("OnPlayerLoginTest") {}
+
+        void OnLogin(Player* player)
+        {
+            ChatHandler(player).PSendSysMessage("Hook works fine!");
+        }
+};
 
 void AddSC_zero_scripts()
 {
+    new OnLoginTest();
+
     //AddSC_zero_creatures();
     AddSC_custom_creatures();
 }
