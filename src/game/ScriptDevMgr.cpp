@@ -134,6 +134,31 @@ void ScriptDevMgr::OnQuestRewardItem(Player* player, Item* item, uint32 count)
     FOREACH_SCRIPT(PlayerScript)->OnQuestRewardItem(player, item, count);
 }
 
+void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg);
+}
+
+void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Player* receiver)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, receiver);
+}
+
+void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Group* group)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, group);
+}
+
+void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, guild);
+}
+
+void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, channel);
+}
+
 PlayerScript::PlayerScript(const char* name)
     : ScriptObject(name)
 {

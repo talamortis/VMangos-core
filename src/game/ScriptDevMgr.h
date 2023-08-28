@@ -6,6 +6,8 @@
 #include "Chat/Chat.h"
 #include "Player.h"
 #include "World.h"
+#include "Guild.h"
+#include "GuildMgr.h"
 
 class Player;
 class BattlegroundScript;
@@ -116,6 +118,13 @@ public:
 
     // Called when player recieves item from quest reward
     virtual void OnQuestRewardItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/) { }
+
+    // The following methods are called when a player sends a chat message.
+    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/) { }
+    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Player* /*receiver*/) { }
+    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Group* /*group*/) { }
+    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Guild* /*guild*/) { }
+    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Channel* /*channel*/) { }
 };
 
 
@@ -140,6 +149,11 @@ public: /* PlayerScript */
     void OnLootItem(Player* player, Item* item, uint32 count, uint64 lootGUID);
     void OnCreateItem(Player* player, Item* item, uint32 count);
     void OnQuestRewardItem(Player* player, Item* item, uint32 count);
+    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg);
+    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Player* receiver);
+    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Group* group);
+    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild);
+    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel);
 
 
 public: /* ScriptRegistry */
