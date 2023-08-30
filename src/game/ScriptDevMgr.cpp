@@ -85,6 +85,46 @@ ScriptDevMgr::~ScriptDevMgr()
 }
 
 /* #############################################
+   #                CreatureScript
+   #
+   ############################################# */
+
+uint32 ScriptDevMgr::GetDialogStatus(Player* player, Creature* creature)
+{
+    ASSERT(player);
+    ASSERT(creature);
+
+    // TODO: 100 is a funny magic number to have hanging around here...
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, 100);
+    player->PlayerTalkClass->ClearMenus();
+    return tmpscript->OnDialogStatus(player, creature);
+}
+
+CreatureAI* ScriptDevMgr::GetCreatureAI(Creature* creature)
+{
+    ASSERT(creature);
+
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, NULL);
+    return tmpscript->GetAI(creature);
+}
+
+bool ScriptDevMgr::OnGossipHello(Player* player, Creature* creature)
+{
+    ASSERT(player);
+    ASSERT(creature);
+
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, false);
+    return tmpscript->OnGossipHello(player, creature);
+}
+
+CreatureScript::CreatureScript(const char* name)
+    : ScriptObject(name)
+{
+    ScriptDevMgr::ScriptRegistry<CreatureScript>::AddScript(this);
+}
+
+
+/* #############################################
    #                PlayerScripts
    #
    ############################################# */
@@ -242,13 +282,13 @@ template class ScriptDevMgr::ScriptRegistry<AuraHandlerScript>;
 template class ScriptDevMgr::ScriptRegistry<ServerScript>;
 template class ScriptDevMgr::ScriptRegistry<WorldScript>;*/
 template class ScriptDevMgr::ScriptRegistry<PlayerScript>;
+template class ScriptDevMgr::ScriptRegistry<CreatureScript>;
 /*template class ScriptDevMgr::ScriptRegistry<GroupScript>;
 template class ScriptDevMgr::ScriptRegistry<FormulaScript>;
 template class ScriptDevMgr::ScriptRegistry<WorldMapScript>;
 template class ScriptDevMgr::ScriptRegistry<InstanceMapScript>;
 template class ScriptDevMgr::ScriptRegistry<BattlegroundMapScript>;
 template class ScriptDevMgr::ScriptRegistry<ItemScript>;
-template class ScriptDevMgr::ScriptRegistry<CreatureScript>;
 template class ScriptDevMgr::ScriptRegistry<GameObjectScript>;
 template class ScriptDevMgr::ScriptRegistry<AreaTriggerScript>;
 template class ScriptDevMgr::ScriptRegistry<BattlegroundScript>;

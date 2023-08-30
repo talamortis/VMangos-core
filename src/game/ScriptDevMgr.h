@@ -82,6 +82,31 @@ public:
 };
 
 /* #############################################
+   #                CreatureScript
+   #
+   #############################################*/
+
+class CreatureScript : public ScriptObject, public UpdatableScript<Creature>
+{
+protected:
+    CreatureScript(const char* name);
+
+public:
+
+    bool IsDatabaseBound() const { return true; }
+
+    // Called When a player Opens a gossip dialog with the creature
+    virtual bool OnGossipHello(Player* player, Creature* creature) { return false; }
+
+    // Called when the dialog status between a player and the creature is requested.
+    virtual uint32 OnDialogStatus(Player* player, Creature* creature) { return 0; }
+
+    // Called when a CreatureAI object is needed for the creature.
+    virtual CreatureAI* GetAI(Creature* creature) const { return NULL; }
+};
+
+
+/* #############################################
    #                PlayerScripts
    #
    #############################################*/
@@ -154,6 +179,11 @@ public: /* PlayerScript */
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Group* group);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel);
+
+public : /* CreatureScript */
+    bool OnGossipHello(Player* player, Creature*);
+    uint32 GetDialogStatus(Player* player, Creature* creature);
+    CreatureAI* GetCreatureAI(Creature* creature);
 
 
 public: /* ScriptRegistry */

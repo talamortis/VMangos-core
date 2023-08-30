@@ -36,6 +36,7 @@
 #include "Spell.h"
 #include "Chat.h"
 #include "CharacterDatabaseCache.h"
+#include "ScriptDevMgr.h"
 
 enum StableResultCode
 {
@@ -375,10 +376,14 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recv_data)
     if (pCreature->IsSpiritGuide())
         pCreature->SendAreaSpiritHealerQueryOpcode(_player);
 
+
     if (!sScriptMgr.OnGossipHello(_player, pCreature))
     {
-        _player->PrepareGossipMenu(pCreature, pCreature->GetDefaultGossipMenuId());
-        _player->SendPreparedGossip(pCreature);
+        if (!sScriptDevMgr.OnGossipHello(_player, pCreature))
+        {
+            _player->PrepareGossipMenu(pCreature, pCreature->GetDefaultGossipMenuId());
+            _player->SendPreparedGossip(pCreature);
+        }
     }
 }
 
