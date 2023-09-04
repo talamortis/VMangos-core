@@ -418,7 +418,8 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recv_data)
             pCreature->PauseOutOfCombatMovement();
 
         if (!sScriptMgr.OnGossipSelect(_player, pCreature, sender, action, code.empty() ? nullptr : code.c_str()))
-            _player->OnGossipSelect(pCreature, gossipListId);
+            if (!sScriptDevMgr.OnGossipSelect(_player, pCreature, sender, action))
+                _player->OnGossipSelect(pCreature, gossipListId);
     }
     else if (guid.IsGameObject())
     {

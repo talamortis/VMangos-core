@@ -117,6 +117,17 @@ bool ScriptDevMgr::OnGossipHello(Player* player, Creature* creature)
     return tmpscript->OnGossipHello(player, creature);
 }
 
+bool ScriptDevMgr::OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
+{
+    ASSERT(player);
+    ASSERT(creature);
+
+
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, false);
+    player->PlayerTalkClass->ClearMenus();
+    return tmpscript->OnGossipSelect(player, creature, sender, action);
+}
+
 CreatureScript::CreatureScript(const char* name)
     : ScriptObject(name)
 {
