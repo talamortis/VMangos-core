@@ -101,6 +101,9 @@ public:
     // Called when a player selects a gossip item in the creature's gossip menu.
     virtual bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) { return false; }
 
+    // Called when a player selects a gossip with a code in the creature's gossip menu.
+    virtual bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, const char* code) { return false; }
+
     // Called when the dialog status between a player and the creature is requested.
     virtual uint32 OnDialogStatus(Player* player, Creature* creature) { return 0; }
 
@@ -186,6 +189,8 @@ public: /* PlayerScript */
 public : /* CreatureScript */
     bool OnGossipHello(Player* player, Creature*);
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action);
+    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, const char* code);
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const char* code);
     uint32 GetDialogStatus(Player* player, Creature* creature);
     CreatureAI* GetCreatureAI(Creature* creature);
 
