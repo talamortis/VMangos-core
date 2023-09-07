@@ -219,6 +219,11 @@ void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*&
     FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, channel);
 }
 
+void ScriptDevMgr::OnPlayerTalentsReset(Player* player, bool noCost)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnTalentsReset(player, noCost);
+}
+
 PlayerScript::PlayerScript(const char* name)
     : ScriptObject(name)
 {

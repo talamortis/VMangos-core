@@ -156,6 +156,9 @@ public:
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Group* /*group*/) { }
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Guild* /*guild*/) { }
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Channel* /*channel*/) { }
+
+    // Called when a player's talent points are reset (right before the reset is done)
+    virtual void OnTalentsReset(Player* /*player*/, bool /*noCost*/) { }
 };
 
 
@@ -185,6 +188,8 @@ public: /* PlayerScript */
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Group* group);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel);
+    void OnPlayerTalentsReset(Player* player, bool noCost);
+
 
 public : /* CreatureScript */
     bool OnGossipHello(Player* player, Creature*);
