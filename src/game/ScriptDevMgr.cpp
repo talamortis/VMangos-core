@@ -190,9 +190,9 @@ void ScriptDevMgr::OnCreatureKill(Player* killer, Creature* killed)
     FOREACH_SCRIPT(PlayerScript)->OnCreatureKill(killer, killed);
 }
 
-void ScriptDevMgr::OnPlayerKilledByCreature(Creature* killer, Player* killed)
+void ScriptDevMgr::OnPlayerKilledByCreature(Creature* killer, Player* killed, bool& durabilityLoss)
 {
-    FOREACH_SCRIPT(PlayerScript)->OnPlayerKilledByCreature(killer, killed);
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerKilledByCreature(killer, killed, durabilityLoss);
 }
 
 void ScriptDevMgr::OnPlayerLogin(Player* player)

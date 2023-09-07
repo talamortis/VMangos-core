@@ -145,7 +145,7 @@ public:
     virtual void OnCreatureKill(Player* /*killer*/, Creature* /*killed*/) { }
 
     // Called when a player is killed by a creature
-    virtual void OnPlayerKilledByCreature(Creature* /*killer*/, Player* /*killed*/) { }
+    virtual void OnPlayerKilledByCreature(Creature* /*killer*/, Player* /*killed*/, bool& /*durabilityLoss*/) { }
 
     // Called When a player Loots an item
     virtual void OnLootItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/, uint64 /*itemGUID*/) { }
@@ -188,7 +188,7 @@ public: /* PlayerScript */
     void OnPlayerLevelChanged(Player* player, uint8 oldLevel, uint8 newLevel);
     void OnPVPKill(Player* killer, Player* killed);
     void OnCreatureKill(Player* killer, Creature* killed);
-    void OnPlayerKilledByCreature(Creature* killer, Player* killed);
+    void OnPlayerKilledByCreature(Creature* killer, Player* killed, bool& durabilityLoss);
     void OnLootItem(Player* player, Item* item, uint32 count, uint64 lootGUID);
     void OnCreateItem(Player* player, Item* item, uint32 count);
     void OnQuestRewardItem(Player* player, Item* item, uint32 count);
