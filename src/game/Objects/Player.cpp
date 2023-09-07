@@ -13233,6 +13233,7 @@ void Player::AddQuest(Quest const* pQuest, Object* questGiver)
         {
             case TYPEID_UNIT:
                 sScriptMgr.OnQuestAccept(this, (Creature*)questGiver, pQuest);
+                sScriptDevMgr.OnQuestAccept(this, (Creature*)questGiver, pQuest);
                 break;
             case TYPEID_GAMEOBJECT:
                 sScriptMgr.OnQuestAccept(this, (GameObject*)questGiver, pQuest);
@@ -13540,7 +13541,7 @@ void Player::RewardQuest(Quest const* pQuest, uint32 reward, WorldObject* questE
     switch (questEnder->GetTypeId())
     {
         case TYPEID_UNIT:
-            handled = sScriptMgr.OnQuestRewarded(this, (Creature*)questEnder, pQuest);
+            handled = sScriptMgr.OnQuestRewarded(this, (Creature*)questEnder, pQuest) || sScriptDevMgr.OnQuestReward(this, (Creature*)questEnder, pQuest);
             break;
         case TYPEID_GAMEOBJECT:
             handled = sScriptMgr.OnQuestRewarded(this, (GameObject*)questEnder, pQuest);
@@ -14687,6 +14688,9 @@ void Player::SendQuestCompleteEvent(uint32 quest_id) const
 void Player::SendQuestReward(Quest const* pQuest, uint32 XP) const
 {
     uint32 questid = pQuest->GetQuestId();
+
+    sScriptDevMgr.OnQuestComplete((Player*)this, pQuest);
+
     WorldPacket data(SMSG_QUESTGIVER_QUEST_COMPLETE, (4 + 4 + 4 + 4 + 4 + pQuest->GetRewItemsCount() * 8));
     data << questid;
     data << uint32(0x03);

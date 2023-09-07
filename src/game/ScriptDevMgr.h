@@ -95,6 +95,12 @@ public:
 
     bool IsDatabaseBound() const { return true; }
 
+    // Called when a player accepts a quest from the creature.
+    virtual bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) { return false; }
+
+    // Called when a player selects a quest reward.
+    virtual bool OnQuestReward(Player* player, Creature* creature, Quest const* quest) { return false; }
+
     // Called When a player Opens a gossip dialog with the creature
     virtual bool OnGossipHello(Player* player, Creature* creature) { return false; }
 
@@ -159,6 +165,9 @@ public:
 
     // Called when a player's talent points are reset (right before the reset is done)
     virtual void OnTalentsReset(Player* /*player*/, bool /*noCost*/) { }
+
+    // Called when a player completes a quest.
+    virtual void OnQuestComplete(Player* player, Quest const* quest) {}
 };
 
 
@@ -189,6 +198,8 @@ public: /* PlayerScript */
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel);
     void OnPlayerTalentsReset(Player* player, bool noCost);
+    void OnQuestComplete(Player* player, Quest const* quest);
+
 
 
 public : /* CreatureScript */
@@ -196,6 +207,8 @@ public : /* CreatureScript */
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action);
     bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, const char* code);
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const char* code);
+    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest);
+    bool OnQuestReward(Player* player, Creature* creature, Quest const* quest);
     uint32 GetDialogStatus(Player* player, Creature* creature);
     CreatureAI* GetCreatureAI(Creature* creature);
 

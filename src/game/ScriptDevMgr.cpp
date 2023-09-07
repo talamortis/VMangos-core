@@ -67,7 +67,6 @@ ScriptDevMgr::~ScriptDevMgr()
     SCR_CLEAR(InstanceMapScript);
     SCR_CLEAR(BattlegroundMapScript);
     SCR_CLEAR(ItemScript);
-    SCR_CLEAR(CreatureScript);
     SCR_CLEAR(GameObjectScript);
     SCR_CLEAR(AreaTriggerScript);
     SCR_CLEAR(BattlegroundScript);
@@ -78,6 +77,7 @@ ScriptDevMgr::~ScriptDevMgr()
     SCR_CLEAR(ConditionScript);
     SCR_CLEAR(DynamicObjectScript);
     SCR_CLEAR(TransportScript);*/
+    SCR_CLEAR(CreatureScript);
     SCR_CLEAR(PlayerScript);
 
 
@@ -88,6 +88,31 @@ ScriptDevMgr::~ScriptDevMgr()
    #                CreatureScript
    #
    ############################################# */
+
+bool ScriptDevMgr::OnQuestAccept(Player* player, Creature* creature, Quest const* quest)
+{
+    ASSERT(player);
+    ASSERT(creature);
+    ASSERT(quest);
+
+
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, false);
+    player->PlayerTalkClass->ClearMenus();
+    return tmpscript->OnQuestAccept(player, creature, quest);
+}
+
+
+
+bool ScriptDevMgr::OnQuestReward(Player* player, Creature* creature, Quest const* quest)
+{
+    ASSERT(player);
+    ASSERT(creature);
+    ASSERT(quest);
+
+    GET_SCRIPT_RET(CreatureScript, creature->GetScriptId(), tmpscript, false);
+    player->PlayerTalkClass->ClearMenus();
+    return tmpscript->OnQuestReward(player, creature, quest);
+}
 
 uint32 ScriptDevMgr::GetDialogStatus(Player* player, Creature* creature)
 {
@@ -152,6 +177,12 @@ CreatureScript::CreatureScript(const char* name)
 void ScriptDevMgr::OnPVPKill(Player* killer, Player* killed)
 {
     FOREACH_SCRIPT(PlayerScript)->OnPVPKill(killer, killed);
+}
+
+void ScriptDevMgr::OnQuestComplete(Player* player, Quest const* quest)
+{
+    player->PlayerTalkClass->ClearMenus();
+    FOREACH_SCRIPT(PlayerScript)->OnQuestComplete(player, quest);
 }
 
 void ScriptDevMgr::OnCreatureKill(Player* killer, Creature* killed)
@@ -223,6 +254,8 @@ void ScriptDevMgr::OnPlayerTalentsReset(Player* player, bool noCost)
 {
     FOREACH_SCRIPT(PlayerScript)->OnTalentsReset(player, noCost);
 }
+
+
 
 PlayerScript::PlayerScript(const char* name)
     : ScriptObject(name)
