@@ -174,6 +174,11 @@ CreatureScript::CreatureScript(const char* name)
    #
    ############################################# */
 
+void ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerHandleTaxi(player, sourcepath);
+}
+
 void ScriptDevMgr::OnPVPKill(Player* killer, Player* killed)
 {
     FOREACH_SCRIPT(PlayerScript)->OnPVPKill(killer, killed);

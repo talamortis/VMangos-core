@@ -18318,6 +18318,8 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
 
     GetSession()->SendDoFlight(mount_display_id, sourcepath);
 
+    sScriptDevMgr.OnPlayerHandleTaxi(this, lastNode);
+
     return true;
 }
 
