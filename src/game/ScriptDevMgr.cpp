@@ -184,6 +184,11 @@ void ScriptDevMgr::OnLootMoney(Player* player, uint32 amount)
     FOREACH_SCRIPT(PlayerScript)->OnLootMoney(player, amount);
 }
 
+void ScriptDevMgr::OnPlayerLogoutRequest(Player* player)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerLogoutRequest(player);
+}
+
 void ScriptDevMgr::OnPVPKill(Player* killer, Player* killed)
 {
     FOREACH_SCRIPT(PlayerScript)->OnPVPKill(killer, killed);

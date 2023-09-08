@@ -175,6 +175,9 @@ public:
 
     // Called when player loots money
     virtual void OnLootMoney(Player* /*player*/, uint32 /*amount*/) { }
+
+    // Called when player Requests to logout
+    virtual void OnPlayerLogoutRequest(Player* player) {}
 };
 
 
@@ -208,6 +211,7 @@ public: /* PlayerScript */
     void OnPlayerTalentsReset(Player* player, bool noCost);
     void OnQuestComplete(Player* player, Quest const* quest);
     void OnLootMoney(Player* player, uint32 amount);
+    void OnPlayerLogoutRequest(Player* player);
 
 
 public : /* CreatureScript */
