@@ -16,7 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # Glob only and not recurse, there are other libs for that
-set (shared_SRCS 
+set (shared_SRCS
+    DataMap.h 
     ByteBuffer.h
     Common.h
     DelayExecutor.h
