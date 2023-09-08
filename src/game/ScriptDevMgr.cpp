@@ -179,6 +179,11 @@ void ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
     FOREACH_SCRIPT(PlayerScript)->OnPlayerHandleTaxi(player, sourcepath);
 }
 
+void ScriptDevMgr::OnLootMoney(Player* player, uint32 amount)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnLootMoney(player, amount);
+}
+
 void ScriptDevMgr::OnPVPKill(Player* killer, Player* killed)
 {
     FOREACH_SCRIPT(PlayerScript)->OnPVPKill(killer, killed);

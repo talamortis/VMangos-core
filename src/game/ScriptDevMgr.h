@@ -172,6 +172,9 @@ public:
 
     // Called when a player completes a quest.
     virtual void OnQuestComplete(Player* player, Quest const* quest) {}
+
+    // Called when player loots money
+    virtual void OnLootMoney(Player* /*player*/, uint32 /*amount*/) { }
 };
 
 
@@ -204,7 +207,7 @@ public: /* PlayerScript */
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Channel* channel);
     void OnPlayerTalentsReset(Player* player, bool noCost);
     void OnQuestComplete(Player* player, Quest const* quest);
-
+    void OnLootMoney(Player* player, uint32 amount);
 
 
 public : /* CreatureScript */
