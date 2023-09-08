@@ -600,7 +600,7 @@ class Object
         Pet* ToPet();
         Pet const* ToPet() const;
 
-        DataMap DataMap;
+        DataMap CustomData;
 
         virtual bool HasQuest(uint32 /* quest_id */) const { return false; }
         virtual bool HasInvolvedQuest(uint32 /* quest_id */) const { return false; }
