@@ -1522,6 +1522,8 @@ void Player::Update(uint32 update_diff, uint32 p_time)
     if (!IsInWorld())
         return;
 
+    sScriptDevMgr.OnBeforePlayerUpdate(this, p_time);
+
     UpdateMirrorTimers(update_diff);
 
     //used to implement delayed far teleports

@@ -178,6 +178,9 @@ public:
 
     // Called when player Requests to logout
     virtual void OnPlayerLogoutRequest(Player* player) {}
+
+    // Called for player::update
+    virtual void OnBeforeUpdate(Player* /*player*/, uint32 /*p_time*/) { }
 };
 
 
@@ -212,6 +215,7 @@ public: /* PlayerScript */
     void OnQuestComplete(Player* player, Quest const* quest);
     void OnLootMoney(Player* player, uint32 amount);
     void OnPlayerLogoutRequest(Player* player);
+    void OnBeforePlayerUpdate(Player* player, uint32 p_time);
 
 
 public : /* CreatureScript */

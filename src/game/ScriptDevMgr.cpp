@@ -179,6 +179,11 @@ void ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
     FOREACH_SCRIPT(PlayerScript)->OnPlayerHandleTaxi(player, sourcepath);
 }
 
+void ScriptDevMgr::OnBeforePlayerUpdate(Player* player, uint32 p_time)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnBeforeUpdate(player, p_time);
+}
+
 void ScriptDevMgr::OnLootMoney(Player* player, uint32 amount)
 {
     FOREACH_SCRIPT(PlayerScript)->OnLootMoney(player, amount);
