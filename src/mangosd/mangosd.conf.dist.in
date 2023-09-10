@@ -2961,4 +2961,4 @@ DynamicRespawn.PlayersMaxLevelDiff      = 0
 ###################################################################################################################
 #    Database Updater for modules
 ###################################################################################################################
-DatabaseUpdater.ModPathToUpdates = "D:\World of Warcraft\vanilla\source\modules"
+DatabaseUpdater.ModPathToUpdates = "C:\repo\VMangos-core\modules"
