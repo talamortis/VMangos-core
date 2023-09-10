@@ -81,6 +81,7 @@ public:
     virtual void OnUpdate(TObject* obj, uint32 diff) { }
 };
 
+
 /* #############################################
    #                CreatureScript
    #
@@ -181,6 +182,9 @@ public:
 
     // Called for player::update
     virtual void OnBeforeUpdate(Player* /*player*/, uint32 /*p_time*/) { }
+
+    // Called when player uses an item
+    virtual void OnPlayerUseItem(Player* /*player*/, Item* /*item*/, SpellCastTargets const& /*targets*/) { }
 };
 
 
@@ -216,6 +220,7 @@ public: /* PlayerScript */
     void OnLootMoney(Player* player, uint32 amount);
     void OnPlayerLogoutRequest(Player* player);
     void OnBeforePlayerUpdate(Player* player, uint32 p_time);
+    void OnPlayerUseItem(Player* player, Item* item, SpellCastTargets const& targets);
 
 
 public : /* CreatureScript */

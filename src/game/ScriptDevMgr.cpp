@@ -174,6 +174,11 @@ CreatureScript::CreatureScript(const char* name)
    #
    ############################################# */
 
+void ScriptDevMgr::OnPlayerUseItem(Player* player, Item* item, SpellCastTargets const& targets)
+{
+    FOREACH_SCRIPT(PlayerScript)->OnPlayerUseItem(player, item, targets);
+}
+
 void ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
 {
     FOREACH_SCRIPT(PlayerScript)->OnPlayerHandleTaxi(player, sourcepath);

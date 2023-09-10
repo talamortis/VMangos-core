@@ -7824,6 +7824,8 @@ void Player::CastItemUseSpell(Item* item, SpellCastTargets const& targets)
     // use triggered flag only for items with many spell casts and for not first cast
     int count = 0;
 
+    sScriptDevMgr.OnPlayerUseItem(this, item, targets);
+
     // item spells casted at use
     for (const auto& spellData : proto->Spells)
     {
