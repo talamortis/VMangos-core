@@ -132,7 +132,7 @@ protected:
 public:
 
     // Called when player want to use Taxi
-    virtual void OnPlayerHandleTaxi(Player* /*player*/, uint32 /*sourcepath*/) {}
+    virtual bool OnPlayerHandleTaxi(Player* /*player*/, uint32 /*sourcepath*/) { return false; }
 
     // Called when a player gains XP (before anything is given)
     virtual void OnGiveXP(Player* /*player*/, uint32& /*amount*/, Unit* /*victim*/) { }
@@ -200,7 +200,7 @@ public:
     virtual ~ScriptDevMgr();
 
 public: /* PlayerScript */
-    void OnPlayerHandleTaxi(Player* player, uint32 sourcepath);
+    bool OnPlayerHandleTaxi(Player* player, uint32 sourcepath);
     void OnGivePlayerXP(Player* player, uint32& amount, Unit* victim);
     void OnPlayerLogin(Player* player);
     void OnPlayerLevelChanged(Player* player, uint8 oldLevel, uint8 newLevel);

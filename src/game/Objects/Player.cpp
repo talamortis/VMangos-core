@@ -18316,13 +18316,14 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     if (GetPet())
         RemovePet(PET_SAVE_REAGENTS);
 
+    if (sScriptDevMgr.OnPlayerHandleTaxi(this, nodes[nodes.size() - 1]))
+        return false; 
+
     WorldPacket data(SMSG_ACTIVATETAXIREPLY, 4);
     data << uint32(ERR_TAXIOK);
     GetSession()->SendPacket(&data);
 
     GetSession()->SendDoFlight(mount_display_id, sourcepath);
-
-    sScriptDevMgr.OnPlayerHandleTaxi(this, nodes[nodes.size()-1]);
 
     return true;
 }

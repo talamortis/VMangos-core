@@ -34,6 +34,11 @@ INSTANTIATE_SINGLETON_1(ScriptDevMgr);
 #define FOREACH_SCRIPT(T) \
     FOR_SCRIPTS(T, itr, end) \
     itr->second
+#define CHECK_RETURN_BOOL(T, R) \
+    if (SCR_REG_LST(T).empty()) \
+        return R; \
+    for (SCR_REG_MAP(T)::iterator itr = SCR_REG_LST(T).begin(); \
+        itr != SCR_REG_LST(T).end(); ++itr)
 
 // Utility macros for finding specific scripts.
 #define GET_SCRIPT(T,I,V) \
@@ -179,9 +184,20 @@ void ScriptDevMgr::OnPlayerUseItem(Player* player, Item* item, SpellCastTargets 
     FOREACH_SCRIPT(PlayerScript)->OnPlayerUseItem(player, item, targets);
 }
 
-void ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
+bool ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
 {
-    FOREACH_SCRIPT(PlayerScript)->OnPlayerHandleTaxi(player, sourcepath);
+    CHECK_RETURN_BOOL(PlayerScript, false); // Check if the script list is empty and return false if it is.
+
+    bool result = false;
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, result)
+    {
+        if (itr->second->OnPlayerHandleTaxi(player, sourcepath))
+        {
+            result = true; // Set the result to true if any script returns true.
+        }
+    }
+
+    return result; // Return the final result.
 }
 
 void ScriptDevMgr::OnBeforePlayerUpdate(Player* player, uint32 p_time)
