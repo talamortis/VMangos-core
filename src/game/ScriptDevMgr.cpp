@@ -266,9 +266,20 @@ void ScriptDevMgr::OnQuestRewardItem(Player* player, Item* item, uint32 count)
     FOREACH_SCRIPT(PlayerScript)->OnQuestRewardItem(player, item, count);
 }
 
-void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg)
+bool ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg)
 {
-    FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg);
+    CHECK_RETURN_BOOL(PlayerScript, false); // Check if the script list is empty and return false if it is.
+
+    bool result = false;
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, result)
+    {
+        if (itr->second->OnChat(player, type, lang, msg))
+        {
+            result = true; // Set the result to true if any script returns true.
+        }
+    }
+
+    return result; // Return the final result.
 }
 
 void ScriptDevMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Player* receiver)

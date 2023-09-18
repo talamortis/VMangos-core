@@ -162,7 +162,7 @@ public:
     virtual void OnQuestRewardItem(Player* /*player*/, Item* /*item*/, uint32 /*count*/) { }
 
     // The following methods are called when a player sends a chat message.
-    virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/) { }
+    virtual bool OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/) { return false; }
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Player* /*receiver*/) { }
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Group* /*group*/) { }
     virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, char*& /*msg*/, Guild* /*guild*/) { }
@@ -210,7 +210,7 @@ public: /* PlayerScript */
     void OnLootItem(Player* player, Item* item, uint32 count, uint64 lootGUID);
     void OnCreateItem(Player* player, Item* item, uint32 count);
     void OnQuestRewardItem(Player* player, Item* item, uint32 count);
-    void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg);
+    bool OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Player* receiver);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Group* group);
     void OnPlayerChat(Player* player, uint32 type, uint32 lang, char*& msg, Guild* guild);
