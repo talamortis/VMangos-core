@@ -662,6 +662,13 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 #define SKIP_STEALTH (pVictim == this)
 #endif
 
+    sScriptDevMgr.OnDamage(this, pVictim, damage);
+
+    //Script Event damage Taken
+    if (Creature* pCreature = pVictim->ToCreature())
+        if (pCreature->AI())
+            pCreature->AI()->DamageTaken(this, damage);
+
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT)
     {
