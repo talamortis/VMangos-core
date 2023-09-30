@@ -53,6 +53,7 @@
 #include "CreatureLinkingMgr.h"
 #include "TemporarySummon.h"
 #include "GuardMgr.h"
+#include "ScriptDevMgr.h"
 
 TrainerSpell const* TrainerSpellData::Find(uint32 spell_id) const
 {
@@ -890,6 +891,8 @@ void Creature::Update(uint32 update_diff, uint32 diff)
         default:
             break;
     }
+
+    sScriptDevMgr.OnAllCreatureUpdate(this, update_diff);
 }
 
 void Creature::StartGroupLoot(Group* group, uint32 timer)
@@ -1644,6 +1647,8 @@ void Creature::InitStatsForLevel(float percentHealth, float percentMana)
     SetCreateStat(STAT_STAMINA, pCLS->stamina);
     SetCreateStat(STAT_INTELLECT, pCLS->intellect);
     SetCreateStat(STAT_SPIRIT, pCLS->spirit);
+
+    sScriptDevMgr.OnInitStatsForLevel(this);
 }
 
 float Creature::_GetHealthMod(int32 rank)

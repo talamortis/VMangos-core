@@ -56,6 +56,7 @@
 #include "world/world_event_wareffort.h"
 #include "CreatureGroups.h"
 #include "Geometry.h"
+#include "ScriptDevMgr.h"
 
 Map::~Map()
 {
@@ -436,6 +437,7 @@ bool Map::Add(Player* player)
     player->SetSplineDonePending(false);
     player->GetSession()->ClearIncomingPacketsByType(PACKET_PROCESS_MOVEMENT);
     player->m_broadcaster->SetInstanceId(GetInstanceId());
+    sScriptDevMgr.OnMapChanged(player);
     return true;
 }
 
