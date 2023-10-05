@@ -218,6 +218,19 @@ void ScriptDevMgr::OnPlayerUseItem(Player* player, Item* item, SpellCastTargets 
     FOREACH_SCRIPT(PlayerScript)->OnPlayerUseItem(player, item, targets);
 }
 
+uint32 ScriptDevMgr::UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmount)
+{
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, UpdateAmount)
+        UpdateAmount = itr->second->UpdateCraftingSkillAmount(player,UpdateAmount);
+    return UpdateAmount;
+}
+
+uint32 ScriptDevMgr::UpdateGatheringSkillAmount(Player* player, uint32& UpdateAmount)
+{
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, UpdateAmount)
+        UpdateAmount = itr->second->UpdateGatheringSkillAmount(player, UpdateAmount);
+    return UpdateAmount;
+}
 
 bool ScriptDevMgr::OnPlayerHandleTaxi(Player* player, uint32 sourcepath)
 {

@@ -278,6 +278,12 @@ public:
 
     // Called when a player changes to a new map (after moving to new map)
     virtual void OnMapChanged(Player* /*player*/) { }
+
+    // Called when updating skill  for crafting
+    virtual uint32 UpdateCraftingSkillAmount(Player* /*player*/, uint32& UpdateAmount) { return UpdateAmount; }
+
+    // Called When updating gathering Skill
+    virtual uint32 UpdateGatheringSkillAmount(Player* /*player*/, uint32& UpdateAmount) { return UpdateAmount; }
 };
 
 
@@ -316,6 +322,8 @@ public: /* PlayerScript */
     void OnBeforePlayerUpdate(Player* player, uint32 p_time);
     void OnPlayerUseItem(Player* player, Item* item, SpellCastTargets const& targets);
     void OnMapChanged(Player* player);
+    uint32 UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmount);
+    uint32 UpdateGatheringSkillAmount(Player* player, uint32& UpdateAmount);
 
 
 public : /* CreatureScript */

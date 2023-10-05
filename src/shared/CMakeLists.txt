@@ -17,7 +17,8 @@
 
 # Glob only and not recurse, there are other libs for that
 set (shared_SRCS
-    DataMap.h 
+    DataMap.h
+    EventMap.h 
     ByteBuffer.h
     Common.h
     DelayExecutor.h
@@ -69,6 +70,7 @@ set (shared_SRCS
     nonstd/optional.hpp
     ByteBuffer.cpp
     Common.cpp
+    EventMap.cpp
     DelayExecutor.cpp
     Log.cpp
     PosixDaemon.cpp
