@@ -284,6 +284,10 @@ public:
 
     // Called When updating gathering Skill
     virtual uint32 UpdateGatheringSkillAmount(Player* /*player*/, uint32& UpdateAmount) { return UpdateAmount; }
+
+    // Called when giving player reputation
+    virtual int32 RewardReputationAmount(Player* /*plater*/, int32& rep) { return rep; }
+
 };
 
 
@@ -322,8 +326,10 @@ public: /* PlayerScript */
     void OnBeforePlayerUpdate(Player* player, uint32 p_time);
     void OnPlayerUseItem(Player* player, Item* item, SpellCastTargets const& targets);
     void OnMapChanged(Player* player);
+    void SendSpellCooldown(Player* player, uint32 spellId, uint32 cooldown, ObjectGuid target);
     uint32 UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmount);
     uint32 UpdateGatheringSkillAmount(Player* player, uint32& UpdateAmount);
+    int32 RewardReputationAmount(Player* player, int32& rep);
 
 
 public : /* CreatureScript */

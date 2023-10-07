@@ -225,6 +225,13 @@ uint32 ScriptDevMgr::UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmo
     return UpdateAmount;
 }
 
+int32 ScriptDevMgr::RewardReputationAmount(Player* player, int32& rep)
+{
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, rep)
+        rep = itr->second->RewardReputationAmount(player, rep);
+    return rep;
+}
+
 uint32 ScriptDevMgr::UpdateGatheringSkillAmount(Player* player, uint32& UpdateAmount)
 {
     FOR_SCRIPTS_RET(PlayerScript, itr, end, UpdateAmount)
@@ -252,6 +259,7 @@ void ScriptDevMgr::OnBeforePlayerUpdate(Player* player, uint32 p_time)
 {
     FOREACH_SCRIPT(PlayerScript)->OnBeforeUpdate(player, p_time);
 }
+
 
 void ScriptDevMgr::OnLootMoney(Player* player, uint32 amount)
 {

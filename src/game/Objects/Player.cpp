@@ -5805,6 +5805,8 @@ bool Player::UpdateFishingSkill()
 
     uint32 gathering_skill_gain = sWorld.getConfig(CONFIG_UINT32_SKILL_GAIN_GATHERING);
 
+    sScriptDevMgr.UpdateGatheringSkillAmount(this, gathering_skill_gain);
+
     return UpdateSkillPro(SKILL_FISHING, chance * 10, gathering_skill_gain);
 }
 
@@ -6936,6 +6938,8 @@ void Player::RewardReputation(Quest const* pQuest)
         if (pQuest->RewRepValue[i])
         {
             int32 rep = CalculateReputationGain(REPUTATION_SOURCE_QUEST,  pQuest->RewRepValue[i], pQuest->RewRepFaction[i], GetQuestLevelForPlayer(pQuest));
+
+            sScriptDevMgr.RewardReputationAmount(this, rep);
 
             if (FactionEntry const* factionEntry = sObjectMgr.GetFactionEntry(pQuest->RewRepFaction[i]))
                 GetReputationMgr().ModifyReputation(factionEntry, rep);
