@@ -288,6 +288,9 @@ public:
     // Called when giving player reputation
     virtual int32 RewardReputationAmount(Player* /*plater*/, int32& rep) { return rep; }
 
+    // called for the amount of primary professions a player can have 
+    virtual uint32 MaxPrimaryTradeSkill(Player* /*player*/, uint32& maxSkillsAllowed) { return maxSkillsAllowed; }
+
 };
 
 
@@ -330,6 +333,7 @@ public: /* PlayerScript */
     uint32 UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmount);
     uint32 UpdateGatheringSkillAmount(Player* player, uint32& UpdateAmount);
     int32 RewardReputationAmount(Player* player, int32& rep);
+    uint32 MaxPrimaryTradeSkill(Player* player, uint32& maxSkillsAllowed);
 
 
 public : /* CreatureScript */

@@ -4283,7 +4283,11 @@ void Player::RemoveSpell(uint32 spellId, bool disabled, bool learn_low_rank)
     if (sSpellMgr.IsPrimaryProfessionFirstRankSpell(spellId))
     {
         uint32 freeProfs = GetFreePrimaryProfessionPoints() + 1;
-        if (freeProfs <= sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL))
+        uint32 MaxPrimaryTradeSkill = sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL);
+
+        sScriptDevMgr.MaxPrimaryTradeSkill(this, MaxPrimaryTradeSkill);
+
+        if (freeProfs <= MaxPrimaryTradeSkill)
             SetFreePrimaryProfessions(freeProfs);
     }
 

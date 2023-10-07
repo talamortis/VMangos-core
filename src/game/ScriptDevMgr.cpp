@@ -218,6 +218,13 @@ void ScriptDevMgr::OnPlayerUseItem(Player* player, Item* item, SpellCastTargets 
     FOREACH_SCRIPT(PlayerScript)->OnPlayerUseItem(player, item, targets);
 }
 
+uint32 ScriptDevMgr::MaxPrimaryTradeSkill(Player* player, uint32& maxSkillsAllowed)
+{
+    FOR_SCRIPTS_RET(PlayerScript, itr, end, maxSkillsAllowed)
+        maxSkillsAllowed = itr->second->UpdateCraftingSkillAmount(player, maxSkillsAllowed);
+    return maxSkillsAllowed;
+}
+
 uint32 ScriptDevMgr::UpdateCraftingSkillAmount(Player* player, uint32& UpdateAmount)
 {
     FOR_SCRIPTS_RET(PlayerScript, itr, end, UpdateAmount)
