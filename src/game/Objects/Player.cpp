@@ -19231,7 +19231,11 @@ void Player::ScheduleCameraUpdate(ObjectGuid guid)
 
 void Player::InitPrimaryProfessions()
 {
-    SetFreePrimaryProfessions(sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL));
+    uint32 PrimaryPoffessions = sWorld.getConfig(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL);
+
+    sScriptDevMgr.MaxPrimaryTradeSkill(this, PrimaryPoffessions);
+
+    SetFreePrimaryProfessions(PrimaryPoffessions);
 }
 
 void Player::SetComboPoints()
