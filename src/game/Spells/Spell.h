@@ -253,6 +253,7 @@ class Spell
         void EffectSummon(SpellEffectIndex effIdx);
         void EffectLearnSpell(SpellEffectIndex effIdx);
         void EffectDispel(SpellEffectIndex effIdx);
+        void EffectLanguage(SpellEffectIndex effIdx);
         void EffectDualWield(SpellEffectIndex effIdx);
         void EffectPickPocket(SpellEffectIndex effIdx);
         void EffectAddFarsight(SpellEffectIndex effIdx);
@@ -607,6 +608,8 @@ class Spell
             bool   deleted:1;
         };
         bool m_destroyed = false;
+
+        SpellCastResult CheckScriptTargeting(SpellEffectIndex effIndex, uint32 chainTargets, float radius, uint32 targetMode, UnitList& tempUnitList);
 
 #ifndef USE_STANDARD_MALLOC
         typedef tbb::concurrent_vector<TargetInfo>     TargetList;
