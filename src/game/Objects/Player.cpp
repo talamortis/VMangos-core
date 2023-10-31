@@ -21890,7 +21890,7 @@ void Player::RefreshBitsForVisibleUnits(UpdateMask* mask, uint32 objectTypeMask)
     {
         if (Object* obj = GetObjectByTypeMask(guid, TypeMask(objectTypeMask)))
         {
-            ByteBuffer buff(50);
+            ByteBuffer& buff = data.AddUpdateBlockAndGetBuffer();
 
             buff << uint8(UPDATETYPE_VALUES);
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
@@ -21899,7 +21899,6 @@ void Player::RefreshBitsForVisibleUnits(UpdateMask* mask, uint32 objectTypeMask)
             buff << obj->GetGUID();
 #endif
             obj->BuildValuesUpdate(UPDATETYPE_VALUES, &buff, mask, this);
-            data.AddUpdateBlock(buff);
         }
     }
     data.Send(GetSession());
@@ -21995,9 +21994,7 @@ void Player::RewardHonor(Unit* uVictim, uint32 groupSize)
 
         if (cVictim->IsRacialLeader())
         {
-            m_honorMgr.Add(488.0, HONORABLE, cVictim);
-            //honor_points = MaNGOS::XP::xp_in_group_rate(groupsize, false) * 15000.0f / groupsize;
-            //kill_type = HONORABLE;
+            m_honorMgr.Add(RACIAL_LEADER_HONOR, HONORABLE, cVictim);
             return;
         }
     }
@@ -22082,7 +22079,6 @@ void Player::OnReceivedItem(Item* item)
     if (item->GetProto()->Quality >= sWorld.getConfig(CONFIG_UINT32_ITEM_INSTANTSAVE_QUALITY))
         SetSaveTimer(1);
 }
-
 
 bool Player::HasFreeBattleGroundQueueId() const
 {
