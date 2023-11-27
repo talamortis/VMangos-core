@@ -1616,20 +1616,25 @@ bool WorldObject::IsWithinLOSInMap(WorldObject const* obj, bool checkDynLos) con
     if (IsWithinDist(obj, 0.0f))
         return true;
     float ox, oy, oz;
-    obj->GetPosition(ox, oy, oz);
-    float targetHeight = obj->IsUnit() ? obj->ToUnit()->GetCollisionHeight() : 2.f;
-    return (IsWithinLOS(ox, oy, oz, checkDynLos, targetHeight));
+    obj->GetLosCheckPosition(ox, oy, oz);
+    return (IsWithinLOS(ox, oy, oz, checkDynLos, 0.0f));
 }
 
 bool WorldObject::IsWithinLOSAtPosition(float ownX, float ownY, float ownZ, float targetX, float targetY, float targetZ, bool checkDynLos, float targetHeight) const
 {
     if (IsInWorld())
     {
-        float height = IsUnit() ? ToUnit()->GetCollisionHeight() : 2.f;
+        float height = IsUnit() ? static_cast<Unit const*>(this)->GetCollisionHeight() : 1.0f;
         return GetMap()->isInLineOfSight(ownX, ownY, ownZ + height, targetX, targetY, targetZ + targetHeight, checkDynLos);
     }
 
     return true;
+}
+
+void WorldObject::GetLosCheckPosition(float& x, float& y, float& z) const
+{
+    GetPosition(x, y, z);
+    z += 1.0f;
 }
 
 bool WorldObject::GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D /* = true */) const
@@ -2005,7 +2010,7 @@ void WorldObject::MovePositionToFirstCollision(Position& pos, float dist, float 
 
     GenericTransport* transport = GetTransport();
 
-    float halfHeight = IsUnit() ? static_cast<Unit*>(this)->GetCollisionHeight() : 0.0f;
+    float halfHeight = IsUnit() ? static_cast<Unit*>(this)->GetCollisionHeight() : 1.0f;
     if (IsUnit())
     {
         PathFinder path(static_cast<Unit*>(this));
@@ -3651,5 +3656,46 @@ bool WorldObject::IsValidAttackTarget(Unit const* target, bool checkAlive) const
         return (playerAffectingAttacker->GetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_MISC_FLAGS) & UNIT_BYTE2_FLAG_UNK1)
                || (playerAffectingTarget->GetByteValue(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_MISC_FLAGS) & UNIT_BYTE2_FLAG_UNK1);
     }
+    return true;
+}
+
+bool WorldObject::IsValidHelpfulTarget(Unit const* target, bool checkAlive) const
+{
+    ASSERT(target);
+
+    // this unit flag prevents casting on friendly or self too
+    if (target == this)
+        return !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE_2) && (!checkAlive || target->IsAlive());
+
+    if (FindMap() != target->FindMap())
+        return false;
+
+    if (!target->IsTargetableBy(this, false, checkAlive, true))
+        return false;
+
+    if (GetReactionTo(target) < REP_UNFRIENDLY ||
+        target->GetReactionTo(this) < REP_UNFRIENDLY)
+        return false;
+
+    Player const* playerAffectingCaster = GetAffectingPlayer();
+    Player const* playerAffectingTarget = target->GetAffectingPlayer();
+
+    // PvP checks
+    if (playerAffectingCaster && playerAffectingTarget)
+    {
+        // pet and owner
+        if (playerAffectingCaster == playerAffectingTarget)
+            return true;
+
+        // cannot help others in duels
+        if (playerAffectingTarget->duel && playerAffectingTarget->duel->startTime != 0)
+            return false;
+
+        // group forces friendly relations in ffa pvp
+        if (playerAffectingCaster->IsFFAPvP() && playerAffectingTarget->IsFFAPvP() &&
+           !playerAffectingCaster->IsInSameRaidWith(playerAffectingTarget))
+            return false;
+    }
+
     return true;
 }

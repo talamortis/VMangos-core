@@ -38,6 +38,7 @@ PlayerBotMgr::PlayerBotMgr()
     m_elapsedTime = 0;
     m_lastBotsRefresh = 0;
     m_lastUpdate = 0;
+    m_lastBattleBotQueueUpdate = 0;
 }
 
 PlayerBotMgr::~PlayerBotMgr()
@@ -332,17 +333,21 @@ void PlayerBotMgr::Update(uint32 diff)
                 BattleGround* bg = sBattleGroundMgr.GetBattleGroundTemplate(bgTypeId);
                 ASSERT(bg);
 
-                uint32 botLevel = bg->GetMinLevel() + 10 * bracketId;
+                uint32 const minLevel = bg->GetMinLevel() + 10 * bracketId;
+                ASSERT(minLevel <= PLAYER_MAX_LEVEL);
+                uint32 const maxLevel = std::min<uint32>(minLevel + 9, PLAYER_MAX_LEVEL);
                 
                 for (uint32 i = queuedAllianceCount[bracketId]; i < bg->GetMinPlayersPerTeam(); ++i)
                 {
+                    uint32 const botLevel = urand(minLevel, maxLevel);
                     sLog.Out(LOG_BG, LOG_LVL_BASIC, "[PlayerBotMgr] Adding level %u alliance battlebot to bg queue %u.", botLevel, queueType);
-                    AddBattleBot(BattleGroundQueueTypeId(queueType), ALLIANCE, botLevel);
+                    AddBattleBot(BattleGroundQueueTypeId(queueType), ALLIANCE, botLevel, true);
                 }
                 for (uint32 i = queuedHordeCount[bracketId]; i < bg->GetMinPlayersPerTeam(); ++i)
                 {
+                    uint32 const botLevel = urand(minLevel, maxLevel);
                     sLog.Out(LOG_BG, LOG_LVL_BASIC, "[PlayerBotMgr] Adding level %u horde battlebot to bg queue %u.", botLevel, queueType);
-                    AddBattleBot(BattleGroundQueueTypeId(queueType), HORDE, botLevel);
+                    AddBattleBot(BattleGroundQueueTypeId(queueType), HORDE, botLevel, true);
                 }
             }
         }
@@ -562,7 +567,7 @@ uint8 SelectRandomRaceForClass(uint8 playerClass, Team playerTeam)
     return SelectRandomContainerElement(validRaces);
 }
 
-void PlayerBotMgr::AddBattleBot(BattleGroundQueueTypeId queueType, Team botTeam, uint32 botLevel)
+void PlayerBotMgr::AddBattleBot(BattleGroundQueueTypeId queueType, Team botTeam, uint32 botLevel, bool temporary)
 {
     std::vector<uint32> availableClasses = { CLASS_WARRIOR, CLASS_HUNTER, CLASS_ROGUE, CLASS_MAGE, CLASS_WARLOCK, CLASS_PRIEST, CLASS_DRUID };
     if (botTeam == HORDE)
@@ -577,7 +582,7 @@ void PlayerBotMgr::AddBattleBot(BattleGroundQueueTypeId queueType, Team botTeam,
 
     // Spawn bot on GM Island
     uint32 const instanceId = sMapMgr.GetContinentInstanceId(1, 16224.356f, 16284.763f);
-    BattleBotAI* ai = new BattleBotAI(botRace, botClass, botLevel, 1, instanceId, 16224.356f, 16284.763f, 13.175f, 4.56f, queueType);
+    BattleBotAI* ai = new BattleBotAI(botRace, botClass, botLevel, 1, instanceId, 16224.356f, 16284.763f, 13.175f, 4.56f, queueType, temporary);
     AddBot(ai);
 }
 
@@ -1717,7 +1722,7 @@ bool ChatHandler::HandleBattleBotAddCommand(char* args, uint8 bg)
         ExtractUInt32(&args, botLevel);
     }
 
-    sPlayerBotMgr.AddBattleBot(BattleGroundQueueTypeId(bg), botTeam, botLevel);
+    sPlayerBotMgr.AddBattleBot(BattleGroundQueueTypeId(bg), botTeam, botLevel, false);
 
     if (bg == BATTLEGROUND_QUEUE_WS)
         PSendSysMessage("Added %s battle bot and queuing for WS", option.c_str());
