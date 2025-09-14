@@ -41,6 +41,7 @@
  // VMAPS
 #include "VMapFactory.h"
 #include "ModelInstance.h"
+#include "GameObjectModel.h"
  // MMAPS
 #include "MoveMap.h"                                        // for mmap manager
 #include "PathFinder.h"                                     // for mmap commands
@@ -141,8 +142,8 @@ bool ChatHandler::HandleSpellInfosCommand(char *args)
     PSendSysMessage("MaxTargetLevel%u:DmgClass%u:rangeIndex%u", pSpell->MaxTargetLevel, pSpell->DmgClass, pSpell->rangeIndex);
     PSendSysMessage("procChance%u:procFlags0x%x:procCharges%u", pSpell->procChance, pSpell->procFlags, pSpell->procCharges);
     PSendSysMessage("InterruptFlags0x%x:AuraInterruptFlags0x%x:PreventionType%x:spellLevel%u", pSpell->InterruptFlags, pSpell->AuraInterruptFlags, pSpell->PreventionType, pSpell->spellLevel);
-    PSendSysMessage("SpellSpecific%u:Binaire%s:spellPriority%u:Positive%u", Spells::GetSpellSpecific(pSpell->Id), pSpell->IsBinary() ? "OUI" : "NON", pSpell->spellPriority, pSpell->IsPositiveSpell());
-    PSendSysMessage("RecoveryTime%u:CategoryRecoveryTime%u:PvEHeartBeat%s", pSpell->RecoveryTime, pSpell->CategoryRecoveryTime, pSpell->IsPvEHeartBeat() ? "OUI" : "NON");
+    PSendSysMessage("SpellSpecific%u:Binaire%s:spellPriority%u:Positive%u", Spells::GetSpellSpecific(pSpell->Id), pSpell->IsBinary() ? "YES" : "NO", pSpell->spellPriority, pSpell->IsPositiveSpell());
+    PSendSysMessage("RecoveryTime%u:CategoryRecoveryTime%u:PvEHeartBeat%s", pSpell->RecoveryTime, pSpell->CategoryRecoveryTime, pSpell->IsPvEHeartBeat() ? "YES" : "NO");
     return true;
 }
 
@@ -197,12 +198,9 @@ bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
     if (!ExtractOptUInt32(&args, failarg2, 0))
         return false;
 
-    char* unk = strtok(nullptr, " ");
-    uint8 unkI = unk ? (uint8)atoi(unk) : 2;
-
     WorldPacket data(SMSG_CAST_RESULT, 4 + 1 + 1);
     data << uint32(133);
-    data << uint8(unkI);
+    data << uint8(2);
     data << uint8(failnum);
     if (failarg1 || failarg2)
         data << uint32(failarg1);
@@ -224,9 +222,7 @@ bool ChatHandler::HandleDebugSendNextChannelSpellVisualCommand(char *args)
     if (uiPlayId == -1)
     {
         m_session->GetPlayer()->SetUInt32Value(UNIT_CHANNEL_SPELL, 0);
-        WorldPacket data(MSG_CHANNEL_UPDATE, (4));
-        data << uint32(0);
-        m_session->GetPlayer()->SendDirectMessage(&data);
+        m_session->GetPlayer()->SendChannelUpdate(0);
         PSendSysMessage("Sending channel stop");
         return true;
     }
@@ -275,9 +271,7 @@ bool ChatHandler::HandleSendSpellChannelVisualCommand(char *args)
     else if (!uiPlayId)
     {
         m_session->GetPlayer()->SetUInt32Value(UNIT_CHANNEL_SPELL, 0);
-        WorldPacket data(MSG_CHANNEL_UPDATE, (4));
-        data << uint32(0);
-        m_session->GetPlayer()->SendDirectMessage(&data);
+        m_session->GetPlayer()->SendChannelUpdate(0);
         PSendSysMessage("Sending channel stop");
         return true;
     }
@@ -1627,7 +1621,7 @@ bool ChatHandler::HandleDebugSpellModsCommand(char* args)
     PSendSysMessage(LANG_YOU_CHANGE_SPELLMODS, opcode == SMSG_SET_FLAT_SPELL_MODIFIER ? "flat" : "pct",
                     spellmodop, value, effidx, GetNameLink(chr).c_str());
     if (needReportToTarget(chr))
-        ChatHandler(chr).PSendSysMessage(LANG_YOURS_SPELLMODS_CHANGED, GetNameLink().c_str(),
+        chr->PSendSysMessage(LANG_YOURS_SPELLMODS_CHANGED, GetNameLink().c_str(),
                                          opcode == SMSG_SET_FLAT_SPELL_MODIFIER ? "flat" : "pct", spellmodop, value, effidx);
 
     WorldPacket data(opcode, (1 + 1 + 2 + 2));
@@ -1649,6 +1643,12 @@ bool ChatHandler::HandleDebugLoSCommand(char*)
         return false;
     }
 
+    if (target->GetDistance(m_session->GetPlayer()) < 0.1f)
+    {
+        SendSysMessage("You are too close to the target.");
+        return false;
+    }
+
     float x0, y0, z0;
     float x1, y1, z1;
     m_session->GetPlayer()->GetPosition(x0, y0, z0);
@@ -1657,9 +1657,17 @@ bool ChatHandler::HandleDebugLoSCommand(char*)
     VMAP::ModelInstance* spawn = m_session->GetPlayer()->GetMap()->FindCollisionModel(x0, y0, z0, x1, y1, z1);
 
     if (!spawn)
-        SendSysMessage("* No collision found.");
+        SendSysMessage("* No collision with static objects found.");
     else
-        PSendSysMessage("* Collision at '%s' [%f %f %f]", spawn->name.c_str(), spawn->iPos.x, spawn->iPos.y, spawn->iPos.z);
+        PSendSysMessage("* Collision with static object at '%s' [%f %f %f]", spawn->name.c_str(), spawn->iPos.x, spawn->iPos.y, spawn->iPos.z);
+
+    GameObjectModel const* dynObj = m_session->GetPlayer()->GetMap()->FindDynamicObjectCollisionModel(x0, y0, z0, x1, y1, z1);
+
+    if (!dynObj)
+        SendSysMessage("* No collision with dynamic objects found.");
+    else
+        PSendSysMessage("* Collision with dynamic object at '%s' [%f %f %f]", dynObj->name.c_str(), dynObj->getPosition().x, dynObj->getPosition().y, dynObj->getPosition().z);
+
     return true;
 }
 
@@ -2068,7 +2076,7 @@ bool ChatHandler::HandleVideoTurn(char*)
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "%f %f %f", angle, d, z);
         a.push_back(Vector3(x + d * cos(angle), y + d * sin(angle), posZ));
     }
-    Movement::MoveSplineInit init(*m_session->GetPlayer());
+    Movement::MoveSplineInit init(*m_session->GetPlayer(), "HandleVideoTurn");
     init.MovebyPath(a);
     init.SetFly();
     init.SetVelocity(moveSpeed);
@@ -2116,7 +2124,7 @@ bool ChatHandler::HandleDebugExp(char*)
             a.push_back(Vector3(currx, curry, currz));
         }
 
-        Movement::MoveSplineInit init(*target);
+        Movement::MoveSplineInit init(*target, "HandleDebugExp");
         init.MovebyPath(a);
         init.SetWalk(true);
         init.SetVelocity(moveSpeed);
@@ -2334,13 +2342,13 @@ bool ChatHandler::HandleUnitStatCommand(char *args)
     if (!pTarget)
         return false;
     uint32 unitStat = 0x0;
-    for (int i = 1; i < UNIT_STAT_IGNORE_PATHFINDING; i *= 2)
+    for (int i = 1; i < UNIT_STATE_IGNORE_PATHFINDING; i *= 2)
         if (pTarget->HasUnitState(i))
             unitStat |= i;
     PSendSysMessage("UnitState = 0x%x (%u)", unitStat, unitStat);
     if (ExtractUInt32(&args, unitStat))
     {
-        pTarget->ClearUnitState(UNIT_STAT_ALL_STATE);
+        pTarget->ClearUnitState(UNIT_STATE_ALL_STATE);
         pTarget->AddUnitState(unitStat);
         PSendSysMessage("UnitState changed to 0x%x (%u)", unitStat, unitStat);
     }
@@ -2589,21 +2597,13 @@ bool ChatHandler::HandleMmapPathCommand(char* args)
     if (GenericTransport* transport = player->GetTransport())
     {
         if (!MMAP::MMapFactory::createOrGetMMapManager()->GetGONavMesh(transport->GetDisplayId()))
-        {
-            PSendSysMessage("NavMesh not loaded for current map.");
-            return true;
-        }
+            PSendSysMessage("NavMesh not loaded for current transport.");
     }
     else
     {
         if (!MMAP::MMapFactory::createOrGetMMapManager()->GetNavMesh(m_session->GetPlayer()->GetMapId()))
-        {
             PSendSysMessage("NavMesh not loaded for current map.");
-            return true;
-        }
     }
-
-    PSendSysMessage("mmap path:");
 
     // units
     Unit* target = GetSelectedUnit();
@@ -2635,17 +2635,18 @@ bool ChatHandler::HandleMmapPathCommand(char* args)
     PSendSysMessage("Building %s", useStraightPath ? "StraightPath" : "SmoothPath");
     PSendSysMessage("length %i (dist %f) type %u", pointPath.size(), path.Length(), path.getPathType());
 
-    for (auto& i : pointPath)
+    for (uint32 i = 0; i < pointPath.size(); ++i)
     {
         if (transport)
-            transport->CalculatePassengerPosition(i.x, i.y, i.z);
-        if (Creature* wp = player->SummonCreature(VISUAL_WAYPOINT, i.x, i.y, i.z, 0, TEMPSUMMON_TIMED_DESPAWN, 18000))
+            transport->CalculatePassengerPosition(pointPath[i].x, pointPath[i].y, pointPath[i].z);
+        if (Creature* wp = player->SummonCreature(VISUAL_WAYPOINT, pointPath[i].x, pointPath[i].y, pointPath[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 18000))
         {
+            wp->SetLevel(i + 1);
             wp->SetFly(true);
             if (transport)
             {
                 transport->AddPassenger(wp);
-                Movement::MoveSplineInit init(*wp);
+                Movement::MoveSplineInit init(*wp, "HandleMmapPathCommand");
                 init.SetTransport(transport->GetGUIDLow());
                 init.SetFacing(wp->GetOrientation());
                 init.Launch();

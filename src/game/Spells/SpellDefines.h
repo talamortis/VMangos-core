@@ -295,7 +295,7 @@ enum SpellCastResult
     SPELL_FAILED_BAD_TARGETS                          , // Invalid target
     SPELL_FAILED_CANT_BE_CHARMED                      , // Target can't be charmed
     SPELL_FAILED_CANT_BE_DISENCHANTED                 , // Item cannot be disenchanted
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_11_2
     SPELL_FAILED_CANT_BE_PROSPECTED                   , // There are no gems in this
 #endif
     SPELL_FAILED_CANT_CAST_ON_TAPPED                  , // Target is tapped
@@ -304,7 +304,7 @@ enum SpellCastResult
     SPELL_FAILED_CANT_STEALTH                         , // You are too close to enemies
     SPELL_FAILED_CASTER_AURASTATE                     , // You can't do that yet
     SPELL_FAILED_CASTER_DEAD                          , // You are dead
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_11_2
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
     SPELL_FAILED_CHARMED                              , // Can't do that while charmed
 #endif
     SPELL_FAILED_CHEST_IN_USE                         , // That is already being used
@@ -312,8 +312,10 @@ enum SpellCastResult
     SPELL_FAILED_DONT_REPORT                          , // Message is hidden/unused
     SPELL_FAILED_EQUIPPED_ITEM                        , // Must have the proper item equipped
     SPELL_FAILED_EQUIPPED_ITEM_CLASS                  , // Must have a %s equipped
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_5_1
     SPELL_FAILED_EQUIPPED_ITEM_CLASS_MAINHAND         , // Must have a %s equipped in the main hand
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_10_2
+#endif
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_9_4
     SPELL_FAILED_EQUIPPED_ITEM_CLASS_OFFHAND          , // Must have a %s equipped in the offhand
 #endif
     SPELL_FAILED_ERROR                                , // Internal error
@@ -357,7 +359,7 @@ enum SpellCastResult
     SPELL_FAILED_NOT_WHILE_GHOST                      , // Can't cast as ghost
     SPELL_FAILED_NO_AMMO                              , // Out of ammo
     SPELL_FAILED_NO_CHARGES_REMAIN                    , // No charges remain
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_10_2
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_9_4
     SPELL_FAILED_NO_CHAMPION                          , // You haven't selected a champion
 #endif
     SPELL_FAILED_NO_COMBO_POINTS                      , // That ability requires combo points
@@ -368,10 +370,10 @@ enum SpellCastResult
     SPELL_FAILED_NO_MOUNTS_ALLOWED                    , // You can't mount here
     SPELL_FAILED_NO_PET                               , // You do not have a pet
     SPELL_FAILED_NO_POWER                             , // Dynamic pre-defined messages, no args: Not enough mana, Not enough rage, etc
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_10_2
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_9_4
     SPELL_FAILED_NOTHING_TO_DISPEL                    , // Nothing to dispel
 #endif
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_11_2
     SPELL_FAILED_NOTHING_TO_STEAL                     , // Nothing to steal
 #endif
     SPELL_FAILED_ONLY_ABOVEWATER                      , // Cannot use while swimming
@@ -425,13 +427,15 @@ enum SpellCastResult
     SPELL_FAILED_NOT_WHILE_TRADING                    , // Can't cast while trading
     SPELL_FAILED_TARGET_NOT_IN_RAID                   , // Target is not in your party or raid group
     SPELL_FAILED_DISENCHANT_WHILE_LOOTING             , // Cannot disenchant while looting
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_11_2
     SPELL_FAILED_PROSPECT_WHILE_LOOTING               , // Cannot prospect while looting
     SPELL_FAILED_PROSPECT_NEED_MORE                   , // Message is hidden/unused, supposedly implemented client-side only
 #endif
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_5_1
     SPELL_FAILED_TARGET_FREEFORALL                    , // Target is currently in free-for-all PvP combat
     SPELL_FAILED_NO_EDIBLE_CORPSES                    , // There are no nearby corpses to eat
     SPELL_FAILED_ONLY_BATTLEGROUNDS                   , // Can only use in battlegrounds
+#endif
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
     SPELL_FAILED_TARGET_NOT_GHOST                     , // Target is not a ghost
     SPELL_FAILED_TOO_MANY_SKILLS                      , // Your pet can't learn any more skills
@@ -443,10 +447,10 @@ enum SpellCastResult
     SPELL_FAILED_PREVENTED_BY_MECHANIC                , // Can't do that while %s
     SPELL_FAILED_PLAY_TIME                            , // Maximum play time exceeded
 #endif
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_9_4
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
     SPELL_FAILED_REPUTATION                           , // Your reputation isn't high enough
 #endif
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_11_2
     SPELL_FAILED_MIN_SKILL                            , // Your skill is not high enough.  Requires %s (%d).
 #endif
     SPELL_FAILED_UNKNOWN                              , // Generic out of bounds response:  Unknown reason
@@ -519,6 +523,14 @@ enum SpellModOp
     SPELLMOD_MULTIPLE_VALUE         = 27,
     SPELLMOD_RESIST_DISPEL_CHANCE   = 28,
     MAX_SPELLMOD                    = 29,
+};
+
+// Note: SPELLMOD_* values is aura types in fact
+enum SpellModType
+{
+    SPELLMOD_TYPE_NONE    = 0,
+    SPELLMOD_FLAT         = 107,                            // SPELL_AURA_ADD_FLAT_MODIFIER
+    SPELLMOD_PCT          = 108                             // SPELL_AURA_ADD_PCT_MODIFIER
 };
 
 // Spell aura states
@@ -741,7 +753,11 @@ enum SpellAttributes
     SPELL_ATTR_NOT_IN_COMBAT_ONLY_PEACEFUL      = 0x10000000,            // 28 Cannot be used in combat
     SPELL_ATTR_NO_IMMUNITIES                    = 0x20000000,            // 29 Unaffected by invulnerability
     SPELL_ATTR_HEARTBEAT_RESIST                 = 0x40000000,            // 30 Chance for spell effects to break early (heartbeat resist)
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
     SPELL_ATTR_NO_AURA_CANCEL                   = 0x80000000             // 31 Positive aura can't be canceled
+#else
+    SPELL_ATTR_CAN_BREAK_ON_DAMAGE              = 0x80000000             // 31 Taking damage has chance to remove the aura
+#endif
 };
 
 enum SpellAttributesEx
@@ -820,18 +836,23 @@ enum SpellAttributesEx3
 {
     SPELL_ATTR_EX3_PVP_ENABLING                 = 0x00000001,            // 0 Spell landed counts as hostile action against enemy even if it doesn't trigger combat state, propagates PvP flags
     SPELL_ATTR_EX3_NO_PROC_EQUIP_REQUIREMENT    = 0x00000002,            // 1
+    // Attributes below first added in patch 1.3.
     SPELL_ATTR_EX3_NO_CASTING_BAR_TEXT          = 0x00000004,            // 2
     SPELL_ATTR_EX3_COMPLETELY_BLOCKED           = 0x00000008,            // 3 All effects prevented on block
     SPELL_ATTR_EX3_NO_RES_TIMER                 = 0x00000010,            // 4 Corpse reclaim delay does not apply to accepting resurrection (only Rebirth has it)
     SPELL_ATTR_EX3_NO_DURABILITY_LOSS           = 0x00000020,            // 5
+    // Attributes below first added in patch 1.5.
     SPELL_ATTR_EX3_NO_AVOIDANCE                 = 0x00000040,            // 6 Persistent Area Aura not removed on leaving radius
     SPELL_ATTR_EX3_DOT_STACKING_RULE            = 0x00000080,            // 7 Create a separate (de)buff stack for each caster
+    // Attributes below first added in patch 1.6.
     SPELL_ATTR_EX3_ONLY_ON_PLAYER               = 0x00000100,            // 8 Can target only players
     SPELL_ATTR_EX3_NOT_A_PROC                   = 0x00000200,            // 9 Aura periodic trigger is not evaluated as triggered
     SPELL_ATTR_EX3_REQUIRES_MAIN_HAND_WEAPON    = 0x00000400,            // 10
     SPELL_ATTR_EX3_ONLY_BATTLEGROUNDS           = 0x00000800,            // 11
+    // Attributes below first added in patch 1.7.
     SPELL_ATTR_EX3_ONLY_ON_GHOSTS               = 0x00001000,            // 12
     SPELL_ATTR_EX3_HIDE_CHANNEL_BAR             = 0x00002000,            // 13 Client will not display channeling bar
+    // Attributes below first added in patch 1.9.
     SPELL_ATTR_EX3_HIDE_IN_RAID_FILTER          = 0x00004000,            // 14 Only "Honorless Target" has this flag
     SPELL_ATTR_EX3_NORMAL_RANGED_ATTACK         = 0x00008000,            // 15 Spells with this attribute are processed as ranged attacks in client
     SPELL_ATTR_EX3_SUPPRESS_CASTER_PROCS        = 0x00010000,            // 16
@@ -842,11 +863,13 @@ enum SpellAttributesEx3
     SPELL_ATTR_EX3_ONLY_PROC_OUTDOORS           = 0x00200000,            // 21
     SPELL_ATTR_EX3_CASTING_CANCELS_AUTOREPEAT   = 0x00400000,            // 22 NYI (only Shoot with Wand has it)
     SPELL_ATTR_EX3_NO_DAMAGE_HISTORY            = 0x00800000,            // 23 NYI
+    // Attributes below first added in patch 1.10.
     SPELL_ATTR_EX3_REQUIRES_OFFHAND_WEAPON      = 0x01000000,            // 24
     SPELL_ATTR_EX3_TREAT_AS_PERIODIC            = 0x02000000,            // 25 Does not cause spell pushback
     SPELL_ATTR_EX3_CAN_PROC_FROM_PROCS          = 0x04000000,            // 26 Auras with this attribute can proc off procced spells (periodic triggers etc)
     SPELL_ATTR_EX3_ONLY_PROC_ON_CASTER          = 0x08000000,            // 27
     SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS = 0x10000000,   // 28 Skips all cast checks, moved from AttributesEx after 1.10 (100% correlation)
+    // Attributes below first added in patch 1.11.
     SPELL_ATTR_EX3_IGNORE_CASTER_MODIFIERS      = 0x20000000,            // 29
     SPELL_ATTR_EX3_DO_NOT_DISPLAY_RANGE         = 0x40000000,            // 30
     SPELL_ATTR_EX3_NOT_ON_AOE_IMMUNE            = 0x80000000             // 31
@@ -854,6 +877,7 @@ enum SpellAttributesEx3
 
 enum SpellAttributesEx4
 {
+    // Attributes below first added in patch 1.12.
     SPELL_ATTR_EX4_IGNORE_RESISTANCES           = 0x00000001,            // 0 From TC 3.3.5, but not present in 1.12 native DBCs. Add it with spell_mod to prevent a spell from being resisted.
     SPELL_ATTR_EX4_CLASS_TRIGGER_ONLY_ON_TARGET = 0x00000002,            // 1
     SPELL_ATTR_EX4_AURA_EXPIRES_OFFLINE         = 0x00000004,            // 2 Aura continues to expire while player is offline
@@ -881,6 +905,9 @@ enum SpellAttributesCustom
     SPELL_CUSTOM_SINGLE_TARGET_AURA         = 0x100,     // Aura applied by spell can only be on 1 target at a time
     SPELL_CUSTOM_AURA_APPLY_BREAKS_STEALTH  = 0x200,     // Stealth is removed when this aura is applied
     SPELL_CUSTOM_NOT_REMOVED_ON_EVADE       = 0x400,     // Aura persists after creature evades
+    SPELL_CUSTOM_SEND_CHANNEL_VISUAL        = 0x800,     // Will periodically send the channeling spell visual kit
+    SPELL_CUSTOM_SEPARATE_AURA_PER_CASTER   = 0x1000,    // Each caster has his own aura slot, instead of replacing others
+    SPELL_CUSTOM_TRIGGER_WEAPON_PROCS       = 0x2000,    // Can trigger weapon enchants and on hit effects
 };
 
 // Custom flags assigned by the core based on spell template data

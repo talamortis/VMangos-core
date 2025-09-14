@@ -602,7 +602,10 @@ bool inline ConditionEntry::Evaluate(WorldObject const* target, Map const* map, 
             struct tm* timeinfo;
             timeinfo = localtime(&rawtime);
 
-            return (timeinfo->tm_hour >= m_value1) && (timeinfo->tm_min >= m_value2) && (timeinfo->tm_hour <= m_value3) && (timeinfo->tm_min <= m_value4);
+            return (timeinfo->tm_hour >= m_value1) &&
+                   ((timeinfo->tm_hour > m_value1) || (timeinfo->tm_min >= m_value2)) &&
+                   (timeinfo->tm_hour <= m_value3) &&
+                   ((timeinfo->tm_hour < m_value3) || (timeinfo->tm_min <= m_value4));
         }
         case CONDITION_DISTANCE_TO_POSITION:
         {
@@ -1047,7 +1050,7 @@ bool ConditionEntry::IsValid()
         }
         case CONDITION_NEARBY_GAMEOBJECT:
         {
-            if (!sObjectMgr.GetGameObjectInfo(m_value1))
+            if (!sObjectMgr.GetGameObjectTemplate(m_value1))
             {
                 if (!sObjectMgr.IsExistingGameObjectId(m_value1))
                 {
@@ -1103,7 +1106,7 @@ bool ConditionEntry::IsValid()
         }
         case CONDITION_SOURCE_ENTRY:
         {
-            if (!sObjectMgr.GetCreatureTemplate(m_value1) && !sObjectMgr.GetGameObjectInfo(m_value1))
+            if (!sObjectMgr.GetCreatureTemplate(m_value1) && !sObjectMgr.GetGameObjectTemplate(m_value1))
             {
                 if (!sObjectMgr.IsExistingCreatureId(m_value1) && !sObjectMgr.IsExistingGameObjectId(m_value1))
                 {

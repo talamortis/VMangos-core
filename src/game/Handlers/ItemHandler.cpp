@@ -184,7 +184,7 @@ void WorldSession::HandleAutoEquipItemOpcode(WorldPacket& recv_data)
         msg = _player->CanUnequipItem(dest, !pSrcItem->IsBag());
         if (msg != EQUIP_ERR_OK)
         {
-            _player->SendEquipError(msg, pDstItem, nullptr);
+            _player->SendEquipError(msg, pDstItem, pSrcItem);
             return;
         }
 
@@ -416,11 +416,15 @@ void WorldSession::HandleItemQuerySingleOpcode(WorldPacket& recv_data)
         data << pProto->Block;
         data << pProto->ItemSet;
         data << pProto->MaxDurability;
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
         data << pProto->Area;
-#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
-        data << pProto->Map;                                // Added in 1.12.x & 2.0.1 client branch
 #endif
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
+        data << pProto->Map;
+#endif
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
         data << pProto->BagFamily;
+#endif
         SendPacket(&data);
     }
     else
@@ -494,7 +498,7 @@ void WorldSession::HandleSellItemOpcode(WorldPacket& recv_data)
     }
 
     // remove fake death
-    if (GetPlayer()->HasUnitState(UNIT_STAT_FEIGN_DEATH))
+    if (GetPlayer()->HasUnitState(UNIT_STATE_FEIGN_DEATH))
         GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
     Item *pItem = _player->GetItemByGuid(itemGuid);
@@ -665,7 +669,7 @@ void WorldSession::HandleBuybackItem(WorldPacket& recv_data)
     }
 
     // remove fake death
-    if (GetPlayer()->HasUnitState(UNIT_STAT_FEIGN_DEATH))
+    if (GetPlayer()->HasUnitState(UNIT_STATE_FEIGN_DEATH))
         GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
     Item *pItem = _player->GetItemFromBuyBackSlot(slot);
@@ -765,7 +769,7 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid, uint8 menu_type)
     }
 
     // remove fake death
-    if (GetPlayer()->HasUnitState(UNIT_STAT_FEIGN_DEATH))
+    if (GetPlayer()->HasUnitState(UNIT_STATE_FEIGN_DEATH))
         GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
     // Stop the npc if moving
@@ -821,8 +825,19 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid, uint8 menu_type)
 
                     // when no faction required but rank > 0 will be used faction id from the vendor faction template to compare the rank
                     if (!pProto->RequiredReputationFaction && pProto->RequiredReputationRank > 0 &&
-                            ReputationRank(pProto->RequiredReputationRank) > _player->GetReputationRank(pCreature->GetFactionId()))
+                        ReputationRank(pProto->RequiredReputationRank) > _player->GetReputationRank(pCreature->GetFactionId()))
                         continue;
+
+                    // World of Warcraft Client Patch 1.7.0 (2005-09-13)
+                    // - Argent Dawn, Timbermaw, Zandalar and Arathi Basin vendors now show
+                    //   you their entire inventory regardless of current reputation, allowing
+                    //   players to peruse their full range of wares.The items in question
+                    //   now require the appropriate reputation level to make use of them.
+#if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_6_1
+                    if (pProto->RequiredReputationFaction && pProto->RequiredReputationRank > 0 &&
+                        ReputationRank(pProto->RequiredReputationRank) > _player->GetReputationRank(pProto->RequiredReputationFaction))
+                        continue;
+#endif
 
                     if (crItem->conditionId && !IsConditionSatisfied(crItem->conditionId, _player, pCreature->GetMap(), pCreature, CONDITION_FROM_VENDOR))
                         continue;
@@ -1090,12 +1105,13 @@ void WorldSession::HandleSetAmmoOpcode(WorldPacket& recv_data)
 
 void WorldSession::SendItemEnchantTimeUpdate(ObjectGuid playerGuid, ObjectGuid itemGuid, uint32 slot, uint32 duration)
 {
-    // last check 2.0.10
     WorldPacket data(SMSG_ITEM_ENCHANT_TIME_UPDATE, (8 + 4 + 4 + 8));
     data << ObjectGuid(itemGuid);
     data << uint32(slot);
     data << uint32(duration);
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
     data << ObjectGuid(playerGuid);
+#endif
     SendPacket(&data);
 }
 

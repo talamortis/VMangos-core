@@ -293,6 +293,9 @@ void BattleGround::Update(uint32 diff)
         // BattleGround Template instance cannot be updated, because it would be deleted
         if (!GetInvitedCount(HORDE) && !GetInvitedCount(ALLIANCE))
             delete this;
+        // update queue to avoid bg remaining indefinitely until player logs back in if he logs out after it pops
+        else if (GetStatus() <= STATUS_WAIT_JOIN && (GetBgMap()->GetCreateTime() + 2 * MINUTE) < time(nullptr))
+            sBattleGroundMgr.ScheduleQueueUpdate(BattleGroundMgr::BgQueueTypeId(GetTypeID()), GetTypeID(), GetBracketId());
 
         return;
     }
@@ -741,6 +744,10 @@ void BattleGround::EndBattleGround(Team winner)
 #else
         DoOrSimulateScriptTextForMap(winTextId, GetHeraldEntry(), GetBgMap());
 #endif
+
+    // remove any invited players from the queue when bg ends
+    if (GetInvitedCount(HORDE) || GetInvitedCount(ALLIANCE))
+        sBattleGroundMgr.ScheduleQueueUpdate(BattleGroundMgr::BgQueueTypeId(GetTypeID()), GetTypeID(), GetBracketId());
 }
 
 uint32 BattleGround::GetBonusHonorFromKill(uint32 kills) const
@@ -750,9 +757,10 @@ uint32 BattleGround::GetBonusHonorFromKill(uint32 kills) const
     return kills * (uint32)MaNGOS::Honor::GetHonorGain(GetMaxLevel(), GetMaxLevel(), 1);
 }
 
-float BattleGround::GetHonorModifier() {
+float BattleGround::GetHonorModifier() const
+{
     // If the game ends in under one hour, less Bonus Honor will be earned from control of mines, graveyards and for the General kill (win).
-    float elapsed = (float)GetStartTime() / IN_MILLISECONDS / HOUR;
+    float const elapsed = (float)GetStartTime() / (float)IN_MILLISECONDS / (float)HOUR;
     return elapsed < 1.0f ? pow(60, elapsed - 1) : 1.0f;
 }
 
@@ -777,9 +785,9 @@ void BattleGround::RewardMark(Player* pPlayer, bool winner)
         return;
 
     if (winner)
-        RewardSpellCast(pPlayer, pPlayer->GetTeamId() ? GetHordeWinSpell() : GetAllianceWinSpell());
+        RewardSpellCast(pPlayer, pPlayer->GetTeamId() == TEAM_HORDE ? GetHordeWinSpell() : GetAllianceWinSpell());
     else
-        RewardSpellCast(pPlayer, pPlayer->GetTeamId() ? GetHordeLoseSpell() : GetAllianceLoseSpell());
+        RewardSpellCast(pPlayer, pPlayer->GetTeamId() == TEAM_HORDE ? GetHordeLoseSpell() : GetAllianceLoseSpell());
 }
 
 void BattleGround::RewardSpellCast(Player* pPlayer, uint32 spellId)
@@ -953,9 +961,11 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool transport, bool sen
             sBattleGroundMgr.ScheduleQueueUpdate(bgQueueTypeId, bgTypeId, GetBracketId());
 
             // Let others know
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
             WorldPacket data;
             sBattleGroundMgr.BuildPlayerLeftBattleGroundPacket(&data, guid);
             SendPacketToTeam(team, &data, pPlayer, false);
+#endif
         }
     }
 
@@ -1030,9 +1040,11 @@ void BattleGround::AddPlayer(Player* pPlayer)
 
     UpdatePlayersCountByTeam(team, false);                  // +1 player
 
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
     WorldPacket data;
     sBattleGroundMgr.BuildPlayerJoinedBattleGroundPacket(&data, pPlayer);
     SendPacketToTeam(team, &data, pPlayer, false);
+#endif
 
     // setup BG group membership
     PlayerAddedToBGCheckIfBGIsRunning(pPlayer);
@@ -1064,7 +1076,11 @@ void BattleGround::AddOrSetPlayerToCorrectBgGroup(Player* pPlayer, ObjectGuid pl
     {
         group = new Group;
         SetBgRaid(team, group);
-        group->Create(playerGuid, pPlayer->GetName());
+        if (!group->Create(playerGuid, pPlayer->GetName()))
+        {
+            SetBgRaid(team, nullptr);
+            delete group;
+        }
     }
 }
 
@@ -1158,6 +1174,63 @@ uint32 BattleGround::GetFreeSlotsForTeam(Team team) const
     if (GetStatus() == STATUS_WAIT_JOIN || GetStatus() == STATUS_IN_PROGRESS)
         return (GetInvitedCount(team) < GetMaxPlayersPerTeam()) ? GetMaxPlayersPerTeam() - GetInvitedCount(team) : 0;
 
+    return 0;
+}
+
+void BattleGround::DecreaseInvitedCount(Team team)
+{
+    switch (team)
+    {
+        case ALLIANCE:
+        {
+            MANGOS_ASSERT(m_invitedAlliance-- > 0);
+            break;
+        }
+        case HORDE:
+        {
+            MANGOS_ASSERT(m_invitedHorde-- > 0);
+            break;
+        }
+        default:
+        {
+            sLog.Out(LOG_BG, LOG_LVL_ERROR, "BattleGround::DecreaseInvitedCount - Unknown player team %u.", team);
+            break;
+        }
+    }
+}
+void BattleGround::IncreaseInvitedCount(Team team)
+{ 
+    switch (team)
+    {
+        case ALLIANCE:
+        {
+            ++m_invitedAlliance;
+            break;
+        }
+        case HORDE:
+        {
+            ++m_invitedHorde;
+            break;
+        }
+        default:
+        {
+            sLog.Out(LOG_BG, LOG_LVL_ERROR, "BattleGround::IncreaseInvitedCount - Unknown player team %u.", team);
+            break;
+        }
+    }
+}
+
+uint32 BattleGround::GetInvitedCount(Team team) const
+{
+    switch (team)
+    {
+        case ALLIANCE:
+            return m_invitedAlliance;
+        case HORDE:
+            return m_invitedHorde;
+    }
+
+    sLog.Out(LOG_BG, LOG_LVL_ERROR, "BattleGround::GetInvitedCount - Unknown player team %u.", team);
     return 0;
 }
 
@@ -1471,7 +1544,9 @@ void BattleGround::SpawnBGObject(ObjectGuid guid, uint32 respawnTime)
         if (obj->getLootState() == GO_JUST_DEACTIVATED)
             obj->SetLootState(GO_READY);
 
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_5_1
         if (obj->GetGOInfo()->type != GAMEOBJECT_TYPE_FLAGSTAND)
+#endif
             obj->SetGoState(GO_STATE_READY);
 
         obj->SetRespawnTime(respawnTime);
@@ -1485,7 +1560,9 @@ void BattleGround::SpawnBGObject(ObjectGuid guid, uint32 respawnTime)
     {
         if (obj)
         {
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_5_1
             if (obj->GetGOInfo()->type != GAMEOBJECT_TYPE_FLAGSTAND)
+#endif
                 obj->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
 
             obj->SetRespawnTime(respawnTime);
@@ -1619,9 +1696,8 @@ important notice:
 buffs aren't spawned/despawned when players captures anything
 buffs are in their positions when battleground starts
 */
-void BattleGround::HandleTriggerBuff(ObjectGuid goGuid)
+void BattleGround::HandleTriggerBuff(GameObject* obj)
 {
-    GameObject* obj = GetBgMap()->GetGameObject(goGuid);
     if (!obj || obj->GetGoType() != GAMEOBJECT_TYPE_TRAP || !obj->isSpawned())
         return;
 
@@ -1636,12 +1712,12 @@ void BattleGround::HandleTriggerBuff(ObjectGuid goGuid)
     // change buff type, when buff is used:
     // TODO this can be done when poolsystem works for instances
     int32 index = m_bgObjects.size() - 1;
-    while (index >= 0 && m_bgObjects[index] != goGuid)
+    while (index >= 0 && m_bgObjects[index] != obj->GetObjectGuid())
         index--;
     if (index < 0)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "BattleGround (Type: %u) has buff trigger %s GOType: %u but it hasn't that object in its internal data",
-                      GetTypeID(), goGuid.GetString().c_str(), obj->GetGoType());
+                      GetTypeID(), obj->GetGuidStr().c_str(), obj->GetGoType());
         return;
     }
 

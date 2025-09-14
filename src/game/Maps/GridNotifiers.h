@@ -45,7 +45,6 @@ namespace MaNGOS
         Camera& i_camera;
         UpdateData i_data;
         ObjectGuidSet i_clientGUIDs;
-        std::set<WorldObject*> i_visibleNow;
 
         explicit VisibleNotifier(Camera &c) : i_camera(c), i_clientGUIDs(c.GetOwner()->m_visibleGUIDs) {}
         template<class T> void Visit(GridRefManager<T>& m);
@@ -618,11 +617,13 @@ namespace MaNGOS
             WorldObject const& GetFocusObject() const { return i_obj; }
             bool operator()(GameObject* go)
             {
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_6_1
                 if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_FISHINGHOLE && go->isSpawned() && i_obj.IsWithinDistInMap(go, i_range) && i_obj.IsWithinDistInMap(go, (float)go->GetGOInfo()->fishinghole.radius))
                 {
                     i_range = i_obj.GetDistance(go);
                     return true;
                 }
+#endif
                 return false;
             }
             float GetLastRange() const { return i_range; }
@@ -755,7 +756,7 @@ namespace MaNGOS
             //WorldObject const& GetFocusObject() const { return *i_obj; }
             bool operator()(Unit* u) const
             {
-                if (u->IsAlive() && u->IsInCombat() && i_obj->IsFriendlyTo(u) && i_obj->IsWithinDistInMap(u, i_range))
+                if (u->IsAlive() && u->IsInCombat() && i_obj->IsFriendlyTo(u) && i_obj->IsWithinDistInMap(u, i_range) && !u->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
                 {
                     if (i_percent)
                         return 100 - u->GetHealthPercent() > i_hp;
@@ -779,8 +780,8 @@ namespace MaNGOS
             WorldObject const& GetFocusObject() const { return *i_obj; }
             bool operator()(Unit* u)
             {
-                return u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) &&
-                    (u->IsCharmed() || u->IsFrozen() || u->HasUnitState(UNIT_STAT_CAN_NOT_REACT));
+                return u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) &&
+                       i_obj->IsWithinDistInMap(u, i_range) && (u->IsCharmed() || u->IsFrozen() || u->HasUnitState(UNIT_STATE_CAN_NOT_REACT));
             }
         private:
             SpellCaster const* i_obj;
@@ -795,7 +796,7 @@ namespace MaNGOS
             bool operator()(Unit* u)
             {
                 return u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) &&
-                    !(u->HasAura(i_spell, EFFECT_INDEX_0) || u->HasAura(i_spell, EFFECT_INDEX_1) || u->HasAura(i_spell, EFFECT_INDEX_2));
+                      !u->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) && !u->HasAura(i_spell);
             }
         private:
             SpellCaster const* i_obj;
@@ -1242,34 +1243,45 @@ namespace MaNGOS
             NearestCreatureEntryWithLiveStateInObjectRangeCheck(NearestCreatureEntryWithLiveStateInObjectRangeCheck const&);
     };
 
-    class NearestCreatureEntryFitConditionInObjectRangeCheck
+    class NearestUnitFitConditionInCombatRangeCheck
     {
-        public:
-            NearestCreatureEntryFitConditionInObjectRangeCheck(WorldObject const& obj,uint32 entry, bool alive, float range, uint32 conditionId)
-                : i_obj(obj), i_entry(entry), i_alive(alive), i_range(range), i_conditionId(conditionId) {}
-            WorldObject const& GetFocusObject() const { return i_obj; }
-            bool operator()(Creature* u)
-            {
-                if (u->GetEntry() == i_entry && ((i_alive && u->IsAlive()) || (!i_alive && u->IsCorpse())) && i_obj.IsWithinCombatDistInMap(u, i_range))
-                {
-                    if (i_conditionId && !IsConditionSatisfied(i_conditionId, u, u->GetMap(), &i_obj, CONDITION_FROM_SPELL_AREA))
-                        return false;
-
-                    i_range = i_obj.GetDistance(u);         // use found unit range as new range limit for next check
-                    return true;
-                }
+    public:
+        explicit NearestUnitFitConditionInCombatRangeCheck(WorldObject const& obj, uint32 entry, bool alive, float range, uint32 conditionId)
+            : i_obj(obj), i_entry(entry), i_alive(alive), i_range(range), i_conditionId(conditionId) {}
+        WorldObject const& GetFocusObject() const { return i_obj; }
+        bool operator()(Unit* u)
+        {
+            if (u->GetEntry() != i_entry)
                 return false;
-            }
-            float GetLastRange() const { return i_range; }
-        private:
-            WorldObject const& i_obj;
-            uint32 i_entry;
-            bool   i_alive;
-            float  i_range;
-            uint32 i_conditionId;
 
-            // prevent clone this object
-            NearestCreatureEntryFitConditionInObjectRangeCheck(NearestCreatureEntryFitConditionInObjectRangeCheck const&);
+            if (i_alive)
+            {
+                if (!u->IsAlive())
+                    return false;
+            }
+            else
+            {
+                if (!u->IsCreature() || !((Creature*)u)->IsCorpse())
+                    return false;
+            }
+
+            if (!i_obj.IsWithinCombatDistInMap(u, i_range))
+                return false;
+
+            if (i_conditionId && !IsConditionSatisfied(i_conditionId, u, u->GetMap(), &i_obj, CONDITION_FROM_SPELL_AREA))
+                return false;
+
+            i_range = i_obj.GetDistance(u);         // use found unit range as new range limit for next check
+            return true;
+        }
+        float GetLastRange() const { return i_range; }
+    private:
+        WorldObject const& i_obj;
+        uint32 i_entry;
+        bool   i_alive;
+        float  i_range;
+        uint32 i_conditionId;
+        NearestUnitFitConditionInCombatRangeCheck(NearestUnitFitConditionInCombatRangeCheck const&);
     };
 
     // Player checks and do
@@ -1600,7 +1612,7 @@ namespace MaNGOS
             explicit NearestHostileUnitInAttackDistanceCheck(Creature const* creature, float dist = 0) : me(creature)
             {
                 m_range = (dist == 0 ? 9999 : dist);
-                m_force = (dist == 0 ? false : true);
+                m_force = dist != 0;
             }
             bool operator()(Unit* u)
             {

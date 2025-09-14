@@ -33,6 +33,7 @@ class Unit;
 class WorldObject;
 class SpellEntry;
 class SpellCaster;
+struct AuraScript;
 
 namespace Spells
 {
@@ -342,6 +343,23 @@ namespace Spells
         return false;
     }
 
+    inline bool IsScriptTarget(uint32 target)
+    {
+        switch (target)
+        {
+            case TARGET_ENUM_UNITS_SCRIPT_AOE_AT_SRC_LOC:
+            case TARGET_ENUM_UNITS_SCRIPT_AOE_AT_DEST_LOC:
+            case TARGET_UNIT_SCRIPT_NEAR_CASTER:
+            case TARGET_GAMEOBJECT_SCRIPT_NEAR_CASTER:
+            case TARGET_LOCATION_SCRIPT_NEAR_CASTER:
+            case TARGET_ENUM_GAMEOBJECTS_SCRIPT_AOE_AT_SRC_LOC:
+            case TARGET_ENUM_GAMEOBJECTS_SCRIPT_AOE_AT_DEST_LOC:
+            case TARGET_ENUM_UNITS_SCRIPT_IN_CONE_60:
+                return true;
+        }
+        return false;
+    }
+
     inline bool IsAreaEffectPossitiveTarget(SpellTarget target)
     {
         switch (target)
@@ -495,6 +513,35 @@ namespace Spells
 
         return false;
     }
+
+    inline bool IsSummonEffect(uint32 effectName)
+    {
+        switch (effectName)
+        {
+            case SPELL_EFFECT_SUMMON:
+            case SPELL_EFFECT_SUMMON_WILD:
+            case SPELL_EFFECT_SUMMON_GUARDIAN:
+            case SPELL_EFFECT_SUMMON_PET:
+            case SPELL_EFFECT_SUMMON_POSSESSED:
+            case SPELL_EFFECT_SUMMON_TOTEM:
+            case SPELL_EFFECT_SUMMON_OBJECT_WILD:
+            case SPELL_EFFECT_SUMMON_TOTEM_SLOT1:
+            case SPELL_EFFECT_SUMMON_TOTEM_SLOT2:
+            case SPELL_EFFECT_SUMMON_TOTEM_SLOT3:
+            case SPELL_EFFECT_SUMMON_TOTEM_SLOT4:
+            case SPELL_EFFECT_SUMMON_PHANTASM:
+            case SPELL_EFFECT_SUMMON_CRITTER:
+            case SPELL_EFFECT_SUMMON_OBJECT_SLOT1:
+            case SPELL_EFFECT_SUMMON_OBJECT_SLOT2:
+            case SPELL_EFFECT_SUMMON_OBJECT_SLOT3:
+            case SPELL_EFFECT_SUMMON_OBJECT_SLOT4:
+            case SPELL_EFFECT_SUMMON_DEAD_PET:
+            case SPELL_EFFECT_SUMMON_DEMON:
+            return true;
+        }
+
+        return false;
+    }
 }
 
 class SpellEntry
@@ -565,7 +612,7 @@ class SpellEntry
         uint32    EffectAmplitude[MAX_EFFECT_INDEX] = {};          // 97-99
         float     EffectMultipleValue[MAX_EFFECT_INDEX] = {};      // 100-102
         uint32    EffectChainTarget[MAX_EFFECT_INDEX] = {};        // 103-105
-        uint32    EffectItemType[MAX_EFFECT_INDEX] = {};           // 106-108
+        uint64    EffectItemType[MAX_EFFECT_INDEX] = {};           // 106-108
         int32     EffectMiscValue[MAX_EFFECT_INDEX] = {};          // 109-111
         uint32    EffectTriggerSpell[MAX_EFFECT_INDEX] = {};       // 112-114
         float     EffectPointsPerComboPoint[MAX_EFFECT_INDEX] = {};// 115-117
@@ -601,6 +648,7 @@ class SpellEntry
         uint32 MinTargetLevel = 0;                                 // 162
         uint32 Custom = 0;                                         // 176
         uint32 Internal = 0;                                       // Assigned by the core.
+        uint32 ScriptId = 0;
 
         // HELPERS:
         DiminishingGroup GetDiminishingReturnsGroup(bool triggered) const;
@@ -652,6 +700,7 @@ class SpellEntry
         bool HasAttribute(SpellAttributesEx2 attribute) const { return AttributesEx2 & attribute; }
         bool HasAttribute(SpellAttributesEx3 attribute) const { return AttributesEx3 & attribute; }
         bool HasAttribute(SpellAttributesEx4 attribute) const { return AttributesEx4 & attribute; }
+        bool HasAttribute(SpellAttributesCustom attribute) const { return Custom & attribute; }
 
         bool HasSpellInterruptFlag(SpellInterruptFlags flag) const { return InterruptFlags & flag; }
         bool HasAuraInterruptFlag(SpellAuraInterruptFlags flag) const { return AuraInterruptFlags & flag; }
@@ -775,6 +824,8 @@ class SpellEntry
             return hasAura;
         }
 
+        bool HasAuraOrTriggersAnotherSpellWithAura(AuraType aura) const;
+
         bool IsCustomSpell() const
         {
             return Internal & SPELL_INTERNAL_CUSTOM;
@@ -823,6 +874,12 @@ class SpellEntry
             return Internal & SPELL_INTERNAL_PASSIVE_STACK_WITH_RANKS;
         }
 
+        bool IsIgnoringCasterAndTargetRestrictions() const
+        {
+            return HasAttribute(SPELL_ATTR_EX_IGNORE_CASTER_AND_TARGET_RESTRICTIONS) ||
+                   HasAttribute(SPELL_ATTR_EX3_IGNORE_CASTER_AND_TARGET_RESTRICTIONS);
+        }
+
         bool IsDeathOnlySpell() const
         {
             return HasAttribute(SPELL_ATTR_EX3_ONLY_ON_GHOSTS) || 
@@ -846,7 +903,11 @@ class SpellEntry
 
         bool IsDeathPersistentSpell() const
         {
+#if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
             return HasAttribute(SPELL_ATTR_EX3_ALLOW_AURA_WHILE_DEAD);
+#else
+            return HasAttribute(SPELL_ATTR_ALLOW_CAST_WHILE_DEAD);
+#endif
         }
 
         bool IsNonCombatSpell() const
@@ -1008,6 +1069,8 @@ class SpellEntry
             return false;
         }
 
+        bool CanTriggerWeaponProcs() const;
+
         bool HasDirectThreatIncreaseEffect() const
         {
             for (uint8 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -1109,10 +1172,11 @@ class SpellEntry
 
         int32 GetDuration() const;
         int32 GetMaxDuration() const;
-        int32 CalculateDuration(WorldObject const* caster = nullptr) const;
+        int32 CalculateDuration(WorldObject const* caster = nullptr, Unit const* target = nullptr, AuraScript* auraScript = nullptr) const;
         uint32 GetCastTime(SpellCaster const* caster, Spell* spell = nullptr) const;
         uint32 GetCastTimeForBonus(DamageEffectType damagetype) const;
         uint16 GetAuraMaxTicks() const;
+        uint32 GetRank() const;
         WeaponAttackType GetWeaponAttackType() const;
         int32 CalculateSimpleValue(SpellEffectIndex eff) const { return EffectBasePoints[eff] + int32(EffectBaseDice[eff]); }
         float CalculateDefaultCoefficient(DamageEffectType const damagetype) const;

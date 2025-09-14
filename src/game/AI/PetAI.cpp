@@ -20,7 +20,6 @@
  */
 
 #include "PetAI.h"
-#include "Errors.h"
 #include "Pet.h"
 #include "Player.h"
 #include "Spell.h"
@@ -30,6 +29,7 @@
 #include "Util.h"
 #include "Group.h"
 #include "SpellAuraDefines.h"
+#include "Map.h"
 
 int PetAI::Permissible(Creature const* creature)
 {
@@ -42,14 +42,24 @@ int PetAI::Permissible(Creature const* creature)
 PetAI::PetAI(Creature* c) : CreatureAI(c), m_updateAlliesTimer(0)
 {
     UpdateAllies();
+
     // Warlock imp has no melee attack
     m_bMeleeAttack = (c->GetEntry() != 416);
+
+    // World of Warcraft Client Patch 1.7.0 (2005-09-13)
+    //- If you call a tamed Deepmoss Hatchling, you are no longer notified
+    //  that you hatched.
+#if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_6_1
+    if (c->GetEntry() == 4263)
+        DoScriptText(1413, c);
+#endif
 }
 
 bool PetAI::_needToStop() const
 {
     // This is needed for charmed creatures, as once their target was reset other effects can trigger threat
-    if (m_creature->IsCharmed() && m_creature->GetVictim() == m_creature->GetCharmer())
+    if (m_creature->IsCharmed() && m_creature->GetVictim() &&
+        m_creature->GetVictim()->GetObjectGuid() == m_creature->GetCharmerGuid())
         return true;
 
     // Stop attacking when player is mounted
@@ -117,6 +127,10 @@ void PetAI::MoveInLineOfSight(Unit* pWho)
         return;
 #endif
 
+    if (m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_ONLY_ATTACK_PVP_ENABLING) &&
+        !pWho->IsPvP() && pWho->IsCharmerOrOwnerPlayerOrPlayerItself())
+        return;
+
     if (m_creature->CanInitiateAttack() && pWho->IsTargetableBy(m_creature))
     {
         float const attackRadius = m_creature->GetAttackDistance(pWho);
@@ -128,7 +142,7 @@ void PetAI::MoveInLineOfSight(Unit* pWho)
 
 void PetAI::UpdateAI(uint32 const diff)
 {
-    if (!m_creature->IsAlive() || !m_creature->GetCharmInfo() || m_creature->HasUnitState(UNIT_STAT_CAN_NOT_REACT))
+    if (!m_creature->IsAlive() || !m_creature->GetCharmInfo() || m_creature->HasUnitState(UNIT_STATE_CAN_NOT_REACT))
         return;
 
     // part of it must run during eyes of the Beast to update melee hits
@@ -171,7 +185,7 @@ void PetAI::UpdateAI(uint32 const diff)
         return;
 
     // Creature could have died upon attacking (thorns aura for example), and lost charm aura. Abort.
-    if (!m_creature->IsAlive() || !m_creature->GetCharmInfo() || m_creature->HasUnitState(UNIT_STAT_CAN_NOT_REACT))
+    if (!m_creature->IsAlive() || !m_creature->GetCharmInfo() || m_creature->HasUnitState(UNIT_STATE_CAN_NOT_REACT))
         return;
 
     // Autocast (casted only in combat or persistent spells in any state)
@@ -250,7 +264,7 @@ void PetAI::UpdateAI(uint32 const diff)
                 {
                     if (CanAttack(target) && spell->CanAutoCast(target))
                     {
-                        targetSpellStore.push_back(std::make_pair(target, spell));
+                        targetSpellStore.emplace_back(target, spell);
                         spellUsed = true;
                     }
                 }
@@ -268,7 +282,7 @@ void PetAI::UpdateAI(uint32 const diff)
 
                         if (spell->CanAutoCast(ally))
                         {
-                            targetSpellStore.push_back(std::make_pair(ally, spell));
+                            targetSpellStore.emplace_back(ally, spell);
                             spellUsed = true;
                             break;
                         }
@@ -283,7 +297,7 @@ void PetAI::UpdateAI(uint32 const diff)
             {
                 Spell* spell = new Spell(m_creature, spellInfo, false);
                 if (spell->CanAutoCast(m_creature->GetVictim()))
-                    targetSpellStore.push_back(std::make_pair(m_creature->GetVictim(), spell));
+                    targetSpellStore.emplace_back(m_creature->GetVictim(), spell);
                 else
                     spell->Delete();
             }
@@ -446,7 +460,7 @@ void PetAI::OwnerAttackedBy(Unit* attacker)
         return;
 
     // In crowd control
-    if (m_creature->HasUnitState(UNIT_STAT_CAN_NOT_REACT))
+    if (m_creature->HasUnitState(UNIT_STATE_CAN_NOT_REACT))
         return;
 
     // Prevent pet from disengaging from current target
@@ -480,7 +494,7 @@ void PetAI::OwnerAttacked(Unit* target)
         return;
 
     // In crowd control
-    if (m_creature->HasUnitState(UNIT_STAT_CAN_NOT_REACT))
+    if (m_creature->HasUnitState(UNIT_STATE_CAN_NOT_REACT))
         return;
 
     // Prevent pet from disengaging from current target
@@ -636,7 +650,7 @@ void PetAI::DoAttack(Unit* target, bool chase)
             // Make sure creature owner enters combat too
             if (Creature* pOwner = ToCreature(m_creature->GetCharmerOrOwner()))
             {
-                if (pOwner->IsAlive() && !pOwner->HasUnitState(UNIT_STAT_CAN_NOT_REACT) &&
+                if (pOwner->IsAlive() && !pOwner->HasUnitState(UNIT_STATE_CAN_NOT_REACT) &&
                     pOwner->IsValidAttackTarget(target, false))
                     pOwner->EnterCombatWithTarget(target);
             }

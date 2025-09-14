@@ -20,15 +20,19 @@
  */
 
 #include "CreatureAI.h"
-#include "Spell.h"
 #include "Creature.h"
 #include "DBCStores.h"
 #include "Totem.h"
 #include "ObjectMgr.h"
 #include "ScriptMgr.h"
 #include "Group.h"
+#include <unordered_set>
 
-CreatureAI::CreatureAI(Creature* creature) : m_creature(creature), m_bUseAiAtControl(false), m_bMeleeAttack(true), m_bCombatMovement(true), m_uiCastingDelay(0), m_uLastAlertTime(0)
+CreatureAI::CreatureAI(Creature* creature) :
+    m_creature(creature), m_bUseAiAtControl(false),
+    m_bMeleeAttack(!creature->HasStaticFlag(CREATURE_STATIC_FLAG_NO_MELEE)),
+    m_bCombatMovement(!creature->HasStaticFlag(CREATURE_STATIC_FLAG_SESSILE)),
+    m_uiCastingDelay(0), m_uLastAlertTime(0)
 {
     SetSpellsList(creature->GetCreatureInfo()->spell_list_id);
 }
@@ -43,8 +47,8 @@ void CreatureAI::JustRespawned()
     SetSpellsList(m_creature->GetCreatureInfo()->spell_list_id);
 
     // Reset combat movement and melee attack.
-    m_bCombatMovement = true;
-    m_bMeleeAttack = true;
+    m_bCombatMovement = !m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_SESSILE);
+    m_bMeleeAttack = !m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_NO_MELEE);
 }
 
 void CreatureAI::AttackedBy(Unit* attacker)
@@ -89,7 +93,7 @@ void CreatureAI::SetSpellsList(CreatureSpellsList const* pSpellsList)
     m_CreatureSpells.clear();
     for (const auto& entry : *pSpellsList)
     {
-        m_CreatureSpells.push_back(CreatureAISpellsEntry(entry));
+        m_CreatureSpells.emplace_back(entry);
     }
     m_CreatureSpells.shrink_to_fit();
     m_uiCastingDelay = 0;
@@ -198,16 +202,17 @@ void CreatureAI::ClearTargetIcon()
     if (players.isEmpty())
         return;
 
-    std::set<Group*> instanceGroups;
+    std::unordered_set<Group*> instanceGroups;
 
     // Clear target icon for every unique group in instance
-    for (const auto& player : players)
+    for (auto const& player : players)
     {
         if (Group* pGroup = player.getSource()->GetGroup())
         {
-            if (instanceGroups.find(pGroup) == instanceGroups.end())
+            auto const& result = instanceGroups.insert(pGroup);
+
+            if (result.second)
             {
-                instanceGroups.insert(pGroup);
                 pGroup->ClearTargetIcon(m_creature->GetObjectGuid());
             }
         }
@@ -246,12 +251,12 @@ void CreatureAI::SetMeleeAttack(bool enabled)
     { 
         if (enabled)
         {
-            m_creature->AddUnitState(UNIT_STAT_MELEE_ATTACKING);
+            m_creature->AddUnitState(UNIT_STATE_MELEE_ATTACKING);
             m_creature->SendMeleeAttackStart(pVictim);
         } 
         else
         {
-            m_creature->ClearUnitState(UNIT_STAT_MELEE_ATTACKING);
+            m_creature->ClearUnitState(UNIT_STATE_MELEE_ATTACKING);
             m_creature->SendMeleeAttackStop(pVictim);
         }
     }
@@ -286,7 +291,7 @@ struct EnterEvadeModeHelper
     {
         if (unit->IsCreature() && unit->ToCreature()->IsTotem())
             ((Totem*)unit)->UnSummon();
-        else
+        else if (unit->IsAlive())
         {
             unit->GetMotionMaster()->Clear(false);
             // for a controlled unit this will result in a follow move
@@ -304,8 +309,8 @@ void CreatureAI::OnCombatStop()
     SetSpellsList(m_creature->GetCreatureInfo()->spell_list_id);
 
     // Reset combat movement and melee attack.
-    m_bCombatMovement = true;
-    m_bMeleeAttack = true;
+    m_bCombatMovement = !m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_SESSILE);
+    m_bMeleeAttack = !m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_NO_MELEE);
 }
 
 void CreatureAI::EnterEvadeMode()
@@ -343,7 +348,7 @@ void CreatureAI::OnMoveInStealth(Unit* who)
 bool CreatureAI::CanTriggerAlert(Unit const* who)
 {
     // If this unit isn't an NPC, is already distracted, is in combat, is confused, stunned or fleeing, do nothing
-    if (m_creature->GetTypeId() != TYPEID_UNIT || m_creature->IsInCombat() || m_creature->HasUnitState(UNIT_STAT_NO_FREE_MOVE))
+    if (m_creature->GetTypeId() != TYPEID_UNIT || m_creature->IsInCombat() || m_creature->HasUnitState(UNIT_STATE_NO_FREE_MOVE))
         return false;
 
     // Only alert for hostiles!

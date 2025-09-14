@@ -18,7 +18,6 @@
 
 #include "PetEventAI.h"
 #include "Pet.h"
-#include "Player.h"
 
 PetEventAI::PetEventAI(Creature* pCreature) : CreatureEventAI(pCreature)
 {}
@@ -116,18 +115,6 @@ void PetEventAI::AttackStart(Unit* pWho)
     } 
 }
 
-void PetEventAI::AttackedBy(Unit* pAttacker)
-{
-    if (!m_creature->GetVictim())
-        AttackStart(pAttacker);
-
-    if (Creature* pOwner = ToCreature(m_creature->GetCharmerOrOwner()))
-    {
-        pOwner->AddThreat(pAttacker);
-        pOwner->SetInCombatWith(pAttacker);
-    }
-}
-
 Unit* PetEventAI::FindTargetForAttack() const
 {
     if (Unit* pTaunter = m_creature->GetTauntTarget())
@@ -201,7 +188,7 @@ void PetEventAI::UpdateAI(uint32 const uiDiff)
         if (m_creature->IsInCombat() && !(hasAliveOwner && pOwner->IsInCombat()))
             m_creature->OnLeaveCombat();
 
-        if (hasAliveOwner && m_creature->GetCharmInfo()->HasCommandState(COMMAND_FOLLOW) && !m_creature->HasUnitState(UNIT_STAT_FOLLOW))
+        if (hasAliveOwner && m_creature->GetCharmInfo()->HasCommandState(COMMAND_FOLLOW) && !m_creature->HasUnitState(UNIT_STATE_FOLLOW))
         {
             m_creature->GetMotionMaster()->MoveFollow(m_creature->GetCharmerOrOwner(), PET_FOLLOW_DIST,
                                                       m_creature->IsPet() ? static_cast<Pet*>(m_creature)->GetFollowAngle() : PET_FOLLOW_ANGLE);

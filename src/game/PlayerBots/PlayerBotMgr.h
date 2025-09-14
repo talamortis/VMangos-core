@@ -5,6 +5,7 @@
 #include "Policies/Singleton.h"
 #include "Database/DatabaseEnv.h"
 #include "PlayerBotAI.h"
+#include "BattleGroundDefines.h"
 
 #include <vector>
 #include <memory>
@@ -80,11 +81,14 @@ class PlayerBotMgr
 
         bool AddBot(PlayerBotAI* ai);
         bool AddBot(uint32 playerGuid, bool chatBot = false, PlayerBotAI* pAI = nullptr);
-        bool DeleteBot(std::map<uint32, std::shared_ptr<PlayerBotEntry>>::iterator iter);
+        bool DeleteBot(std::map<uint64, std::shared_ptr<PlayerBotEntry>>::iterator iter);
         bool DeleteBot(uint32 playerGuid);
 
         bool AddRandomBot();
         bool DeleteRandomBot();
+
+        void AddBattleBot(BattleGroundQueueTypeId queueType, Team botTeam, uint32 botLevel, bool temporary);
+        void DeleteBattleBots();
 
         void DeleteAll();
         void AddAllBots();
@@ -110,8 +114,9 @@ class PlayerBotMgr
         uint32 m_lastUpdate;
         uint32 m_totalChance;
         uint32 m_maxAccountId;
+        time_t m_lastBattleBotQueueUpdate;
 
-        std::map<uint32 /*pl guid*/, std::shared_ptr<PlayerBotEntry>> m_bots;
+        std::map<uint64 /*pl guid*/, std::shared_ptr<PlayerBotEntry>> m_bots;
         std::map<uint32 /*account*/, uint32> m_tempBots;
         PlayerBotStats m_stats;
 
@@ -122,6 +127,7 @@ class PlayerBotMgr
         bool m_confAllowSaving;
         bool m_confDebug;
         bool m_confEnableRandomBots;
+        bool m_confBattleBotAutoJoin;
 };
 
 #define sPlayerBotMgr MaNGOS::Singleton<PlayerBotMgr>::Instance()

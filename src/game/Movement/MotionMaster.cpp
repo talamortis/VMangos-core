@@ -23,7 +23,7 @@
 #include "CreatureAISelector.h"
 #include "Creature.h"
 #include "Transport.h"
-
+#include "Map.h"
 #include "ConfusedMovementGenerator.h"
 #include "FleeingMovementGenerator.h"
 #include "FearMovementGenerator.h"
@@ -37,8 +37,6 @@
 
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
-
-#include <cassert>
 
 inline bool isStatic(MovementGenerator* mv)
 {
@@ -55,7 +53,7 @@ void MotionMaster::Initialize()
     Clear(false, true);
 
     // set new default movement generator
-    if (m_owner->IsCreature() && m_owner->IsAlive() && !m_owner->HasUnitState(UNIT_STAT_POSSESSED))
+    if (m_owner->IsCreature() && m_owner->IsAlive() && !m_owner->HasUnitState(UNIT_STATE_POSSESSED))
     {
         MovementGenerator* movement = FactorySelector::selectMovementGenerator(static_cast<Creature*>(m_owner));
         push(movement == nullptr ? &si_idleMovement : movement);
@@ -114,7 +112,7 @@ void MotionMaster::InitializeNewDefault(bool alwaysReplace)
     if (alwaysReplace || (curr->GetMovementGeneratorType() != new_default))
     {
         // Set new default movement generator
-        if (!m_owner->HasUnitState(UNIT_STAT_POSSESSED))
+        if (!m_owner->HasUnitState(UNIT_STATE_POSSESSED))
         {
             MovementGenerator* movement = FactorySelector::selectMovementGenerator(pCreature);
             if (movement)
@@ -177,7 +175,7 @@ MotionMaster::~MotionMaster()
 
 void MotionMaster::UpdateMotion(uint32 diff)
 {
-    if (m_owner->HasUnitState(UNIT_STAT_CAN_NOT_MOVE))
+    if (m_owner->HasUnitState(UNIT_STATE_CAN_NOT_MOVE))
         return;
 
     MANGOS_ASSERT(!empty());
@@ -216,7 +214,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
 void MotionMaster::UpdateMotionAsync(uint32 diff)
 {
     m_needsAsyncUpdate = false;
-    if (m_owner->HasUnitState(UNIT_STAT_CAN_NOT_MOVE))
+    if (m_owner->HasUnitState(UNIT_STATE_CAN_NOT_MOVE))
         return;
 
     MANGOS_ASSERT(!empty());
@@ -373,12 +371,12 @@ void MotionMaster::MoveRandom(bool use_current_position, float wander_distance, 
 
 void MotionMaster::MoveTargetedHome()
 {
-    if (m_owner->HasUnitState(UNIT_STAT_LOST_CONTROL))
+    if (m_owner->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return;
 
     Clear(false);
 
-    if (m_owner->IsCreature() && !((Creature*)m_owner)->GetCharmerOrOwnerGuid())
+    if (m_owner->IsCreature() && (!((Creature*)m_owner)->GetCharmerOrOwnerGuid() || ((Creature*)m_owner)->HasStaticFlag(CREATURE_STATIC_FLAG_SESSILE)))
     {
         // Manual exception for linked mobs
         if (m_owner->IsLinkingEventTrigger() && m_owner->GetMap()->GetCreatureLinkingHolder()->TryFollowMaster((Creature*)m_owner))
@@ -443,7 +441,7 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
 
 void MotionMaster::MoveFollow(Unit* target, float dist, float angle)
 {
-    if (m_owner->HasUnitState(UNIT_STAT_LOST_CONTROL))
+    if (m_owner->HasUnitState(UNIT_STATE_LOST_CONTROL))
         return;
 
     Clear();
@@ -868,15 +866,16 @@ void MotionMaster::MoveJump(float x, float y, float z, float horizontalSpeed, fl
     Mutate(new EffectMovementGenerator(id));*/
 }
 
-void MotionMaster::MoveCharge(Unit* target, uint32 delay, bool triggerAutoAttack)
+void MotionMaster::MoveCharge(Unit* target, uint32 delay, bool triggerAutoAttack, bool useCombatReach)
 {
+    float meleeReach = useCombatReach ? (m_owner->GetCombatReachToTarget(target, false, 0.0f, true) - 0.5f) : 0.0f;
     if (m_owner->IsPlayer())
-        Mutate(new ChargeMovementGenerator<Player>(*(m_owner->ToPlayer()), *target, delay, triggerAutoAttack));
+        Mutate(new ChargeMovementGenerator<Player>(*(m_owner->ToPlayer()), *target, delay, triggerAutoAttack, 0.0f, meleeReach));
     else
-        Mutate(new ChargeMovementGenerator<Creature>(*(m_owner->ToCreature()), *target, delay, triggerAutoAttack));
+        Mutate(new ChargeMovementGenerator<Creature>(*(m_owner->ToCreature()), *target, delay, triggerAutoAttack, 0.0f, meleeReach));
 }
 
-bool MotionMaster::MoveDistance(Unit* pTarget, float distance)
+bool MotionMaster::MoveDistance(Unit const* pTarget, float distance)
 {
     if (m_owner->GetTransport())
         return false;

@@ -86,7 +86,7 @@ void OPvPCapturePoint::SendChangePhase()
 
 bool OPvPCapturePoint::AddObject(uint32 type, uint32 entry, uint32 mapId, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3)
 {
-    GameObjectInfo const* goInfo = sObjectMgr.GetGameObjectInfo(entry);
+    GameObjectInfo const* goInfo = sObjectMgr.GetGameObjectTemplate(entry);
     if (!goInfo)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Invalid GameObject entry %u in OPvPCapturePoint::AddObject!", entry);
@@ -147,17 +147,16 @@ bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 mapId, float x, 
     sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Creating capture point %u", entry);
 
     // check info existence
-    GameObjectInfo const* goinfo = ObjectMgr::GetGameObjectInfo(entry);
-    if (!goinfo || goinfo->type != GAMEOBJECT_TYPE_CAPTURE_POINT)
-    {
-        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "OutdoorPvP: GO %u is not capture point!", entry);
-        return false;
-    }
-
-    GameObjectInfo const* goInfo = sObjectMgr.GetGameObjectInfo(entry);
+    GameObjectInfo const* goInfo = sObjectMgr.GetGameObjectTemplate(entry);
     if (!goInfo)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Invalid GameObject entry %u in OPvPCapturePoint::SetCapturePointData!", entry);
+        return false;
+    }
+
+    if (goInfo->type != GAMEOBJECT_TYPE_CAPTURE_POINT)
+    {
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "OutdoorPvP: GO %u is not capture point!", entry);
         return false;
     }
 
@@ -181,9 +180,9 @@ bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 mapId, float x, 
     m_capturePointGUID = pGo->GetGUIDLow();
 
     // get the needed values from goinfo
-    m_maxValue = (float)goinfo->capturePoint.maxTime;
-    m_maxSpeed = m_maxValue / (goinfo->capturePoint.minTime ? goinfo->capturePoint.minTime : 60);
-    m_neutralValuePct = goinfo->capturePoint.neutralPercent;
+    m_maxValue = (float)goInfo->capturePoint.maxTime;
+    m_maxSpeed = m_maxValue / (goInfo->capturePoint.minTime ? goInfo->capturePoint.minTime : 60);
+    m_neutralValuePct = goInfo->capturePoint.neutralPercent;
     m_minValue = m_maxValue * float(m_neutralValuePct) / 100.0f;
 
     return true;
@@ -588,7 +587,7 @@ void ZoneScript::Update(uint32 diff)
 
 void ZoneScript::OnPlayerEnter(Player* plr)
 {
-    m_players[plr->GetTeamId()].insert(plr);
+    m_players[plr->GetTeamId()].insert(plr->GetObjectGuid());
 }
 
 void ZoneScript::OnPlayerLeave(Player* plr)
@@ -596,23 +595,25 @@ void ZoneScript::OnPlayerLeave(Player* plr)
     // Remove the world state information from the player (we can't keep everyone up to date, so leave out those who are not in the concerning zones).
     if (!plr->GetSession()->PlayerLogout())
         SendRemoveWorldStates(plr);
-    m_players[plr->GetTeamId()].erase(plr);
+    m_players[plr->GetTeamId()].erase(plr->GetObjectGuid());
     sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Player %s left a ZoneScript zone", plr->GetName());
 }
 
 void ZoneScript::SendUpdateWorldState(uint32 field, uint32 value)
 {
     for (auto const& playerPerTeam : m_players)
-        for (PlayerSet::iterator itr = playerPerTeam.begin(); itr != playerPerTeam.end(); ++itr)
-            (*itr)->SendUpdateWorldState(field, value);
+        for (auto const& guid : playerPerTeam)
+            if (Player* pPlayer = GetMap()->GetPlayer(guid))
+                pPlayer->SendUpdateWorldState(field, value);
 }
 
 void ZoneScript::BroadcastPacket(WorldPacket& data) const
 {
     // This is faster than sWorld.SendZoneMessage.
     for (auto const& playerPerTeam : m_players)
-        for (PlayerSet::const_iterator itr = playerPerTeam.begin(); itr != playerPerTeam.end(); ++itr)
-            (*itr)->GetSession()->SendPacket(&data);
+        for (auto const& guid : playerPerTeam)
+            if (Player* pPlayer = GetMap()->GetPlayer(guid))
+                pPlayer->GetSession()->SendPacket(&data);
 }
 
 void ZoneScript::RegisterZone(uint32 zoneId)
@@ -622,17 +623,23 @@ void ZoneScript::RegisterZone(uint32 zoneId)
 
 bool ZoneScript::HasPlayer(Player* plr) const
 {
-    return m_players[plr->GetTeamId()].find(plr) != m_players[plr->GetTeamId()].end();
+    return m_players[plr->GetTeamId()].find(plr->GetObjectGuid()) != m_players[plr->GetTeamId()].end();
 }
 
 void ZoneScript::TeamCastSpell(TeamId team, int32 spellId)
 {
     if (spellId > 0)
-        for (auto const itr : m_players[team])
-            itr->CastSpell(itr, (uint32)spellId, true);
+    {
+        for (auto const& guid : m_players[team])
+            if (Player* pPlayer = GetMap()->GetPlayer(guid))
+                pPlayer->CastSpell(pPlayer, (uint32)spellId, true);
+    }
     else
-        for (auto const itr : m_players[team])
-            itr->RemoveAurasDueToSpell((uint32) - spellId); // By stack?
+    {
+        for (auto const& guid : m_players[team])
+            if (Player* pPlayer = GetMap()->GetPlayer(guid))
+                pPlayer->RemoveAurasDueToSpell((uint32)-spellId); // By stack?
+    }
 }
 
 void ZoneScript::TeamApplyBuff(TeamId team, uint32 spellId, uint32 spellId2)

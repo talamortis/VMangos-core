@@ -42,7 +42,6 @@
 #include "Database/DatabaseEnv.h"
 #include "CliRunnable.h"
 #include "RASocket.h"
-#include "ChatSocket.h"
 #include "Util.h"
 #include "MaNGOSsoap.h"
 #include "MassMailMgr.h"
@@ -145,56 +144,6 @@ void remoteAccess()
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "RARunnable thread ended");
 }
 
-void offlineChat()
-{
-#if defined (ACE_HAS_EVENT_POLL) || defined (ACE_HAS_DEV_POLL)
-
-    ACE_Dev_Poll_Reactor imp;
-
-    imp.max_notify_iterations(128);
-    imp.restart(1);
-
-#else
-
-    ACE_TP_Reactor imp;
-    imp.max_notify_iterations(128);
-
-#endif
-
-    ACE_Reactor m_Reactor(&imp);
-
-    OfflineChatSocket::Acceptor m_Acceptor;
-
-    LoginDatabase.ThreadStart();
-    uint16 raport = sConfig.GetIntDefault ("OfflineChat.Port", 3444);
-    std::string stringip = sConfig.GetStringDefault ("OfflineChat.IP", "0.0.0.0");
-
-    ACE_INET_Addr listen_addr(raport, stringip.c_str());
-
-    if (m_Acceptor.open (listen_addr, &m_Reactor, ACE_NONBLOCK) == -1)
-    {
-        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "MaNGOS RA can not bind to port %d on %s", raport, stringip.c_str ());
-    }
-
-    sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "Starting offline-chat listener on port %d on %s", raport, stringip.c_str ());
-
-    while (!m_Reactor.reactor_event_loop_done())
-    {
-        ACE_Time_Value interval (0, 10000);
-
-        if (m_Reactor.run_reactor_event_loop (interval) == -1)
-            break;
-
-        if (World::IsStopped())
-        {
-            m_Acceptor.close();
-            break;
-        }
-    }
-    LoginDatabase.ThreadEnd();
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "OfflineChatRunnable thread ended");
-}
-
 Master::Master()
 {
 }
@@ -227,6 +176,20 @@ int Master::Run()
         Log::WaitBeforeContinueIfNeed();
         return 1;
     }
+
+    {
+        std::unique_ptr<QueryResult> result{LoginDatabase.PQuery("SELECT `name` FROM `realmlist` WHERE `id` = %d", realmID)};
+        if (!result)
+        {
+            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Config contains invalid realmID %d, make sure its set in the `realmlist` table", realmID);
+            Log::WaitBeforeContinueIfNeed();
+            return 1;
+        }
+        realmName = (*result)[0].GetCppString();
+    }
+
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "World server is running realm ID: %d Name: \"%s\"", realmID, realmName.c_str());
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
 
     // Initialize the World
     sWorld.SetInitialWorldSettings();
@@ -271,9 +234,6 @@ int Master::Run()
     std::thread* rar_thread = nullptr;
     if (sConfig.GetBoolDefault ("Ra.Enable", false))
         rar_thread = new std::thread(&remoteAccess);
-    std::thread* offlinechat_thread = nullptr;
-    if (sConfig.GetBoolDefault ("OfflineChat.Enable", false))
-        offlinechat_thread = new std::thread(&offlineChat);
 
     // Handle affinity for multiple processors and process priority on Windows
     #ifdef WIN32
@@ -387,12 +347,6 @@ int Master::Run()
     {
         rar_thread->join();
         delete rar_thread;
-    }
-
-    if (offlinechat_thread)
-    {
-        offlinechat_thread->join();
-        delete offlinechat_thread;
     }
 
     // Clean account database before leaving
@@ -541,8 +495,6 @@ bool Master::_StartDB()
         LogsDatabase.HaltDelayThread();
         return false;
     }
-
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Realm running as realm ID %d", realmID);
 
     // Clean the database before starting
     clearOnlineAccounts();

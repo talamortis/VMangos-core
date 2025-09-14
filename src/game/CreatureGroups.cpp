@@ -20,6 +20,7 @@
 #include "CreatureGroups.h"
 #include "ObjectMgr.h"
 #include "CreatureAI.h"
+#include "BattleGround.h"
 
 void CreatureGroup::AddMember(ObjectGuid guid, float followDist, float followAngle, uint32 memberFlags)
 {
@@ -164,7 +165,7 @@ void CreatureGroup::OnRespawn(Creature* member)
     RespawnAll(member);
 }
 
-void CreatureGroup::RespawnAll(Creature* except)
+void CreatureGroup::RespawnAll(Creature const* except)
 {
     if (m_deleted)
         return;
@@ -216,7 +217,7 @@ void CreatureGroup::Respawn(Creature* member, CreatureGroupMember const* memberE
     m_respawnGuard = false;
 }
 
-void CreatureGroup::MemberAssist(Creature* member, Unit* target, Creature* alliedAttacker)
+void CreatureGroup::MemberAssist(Creature* member, Unit* target, Creature const* alliedAttacker)
 {
     if (m_assistGuard)
         return;
@@ -241,7 +242,7 @@ void CreatureGroup::MemberAssist(Creature* member, Unit* target, Creature* allie
     }
 }
 
-void CreatureGroup::RemoveTemporaryLeader(Creature* pLeader)
+void CreatureGroup::RemoveTemporaryLeader(Creature const* pLeader)
 {
     if (m_deleted)
         return;
@@ -288,6 +289,15 @@ void CreatureGroup::DisbandGroup(Creature* pLeader)
     }
 
     m_members.clear();
+}
+
+void CreatureGroup::DoForAllMembers(Map* pMap, std::function<void(Creature*)>&& pFunc)
+{
+    for (auto const& it : m_members)
+    {
+        if (Creature* pMember = pMap->GetCreature(it.first))
+            pFunc(pMember);
+    }
 }
 
 void CreatureGroup::DeleteFromDb()
@@ -459,7 +469,7 @@ void CreatureGroupsManager::Load()
     }
     while (result->NextRow());
 
-    result.reset(WorldDatabase.Query("SELECT `leader_guid`, `creature_id`, `min_count`, `max_count` FROM `creature_groups_entry_limit` ORDER BY `leader_guid`"));
+    result = WorldDatabase.Query("SELECT `leader_guid`, `creature_id`, `min_count`, `max_count` FROM `creature_groups_entry_limit` ORDER BY `leader_guid`");
 
     if (result)
     {

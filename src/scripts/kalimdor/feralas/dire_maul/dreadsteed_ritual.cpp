@@ -42,9 +42,8 @@ enum
     SPELL_BELL_AURA         = 23117,
     SPELL_CANDLE_AURA       = 23226,
 
-    SAY_HEL_NURATH          = -1780201,
-    SAY_IMP_DESPAWN         = -1780202,
-    SAY_DREAD_GUARD_DESPAWN = -1780203
+    SAY_HEL_NURATH          = 9727,
+    SAY_DEMON_DESPAWN       = 9768
 };
 
 struct EventLocations
@@ -92,7 +91,7 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
             if (gobj = me->GetMap()->GetGameObject(guid))
                 guidGlyphTab[i] = guid;
             else
-                sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Dreadsteed Ritual : cannot find Rune %u", guidGlyphTab[i]);
+                sLog.Out(LOG_SCRIPTS, LOG_LVL_MINIMAL, "Dreadsteed Ritual : cannot find Rune %u", guidGlyphTab[i]);
 
         }
         for (int i = 0; i < 3; i++)
@@ -103,7 +102,7 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
                 nodes[i].up = false;
             }
             else
-                sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Dreadsteed Ritual : cannot find Node %u", guidGlyphTab[i]);
+                sLog.Out(LOG_SCRIPTS, LOG_LVL_MINIMAL, "Dreadsteed Ritual : cannot find Node %u", guidGlyphTab[i]);
 
         }
         if (gobj = me->FindNearestGameObject(GOBJ_RITUAL_CIRCLE, 30.000000))
@@ -182,14 +181,14 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
         for (const auto& it : lCrea)
         {
             if (it->IsAlive())
-                DoScriptText(SAY_IMP_DESPAWN, it);
+                DoScriptText(SAY_DEMON_DESPAWN, it);
             it->DisappearAndDie();
         }
         me->GetCreatureListWithEntryInGrid(lCrea, NPC_DREAD_GUARD, 30.0f);
         for (const auto& it : lCrea)
         {
             if (it->IsAlive())
-                DoScriptText(SAY_DREAD_GUARD_DESPAWN, it);
+                DoScriptText(SAY_DEMON_DESPAWN, it);
             it->DisappearAndDie();
         }
     }
@@ -229,14 +228,14 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
         for (const auto& it : lCrea)
         {
             if (it->IsAlive())
-                DoScriptText(SAY_IMP_DESPAWN, it);
+                DoScriptText(SAY_DEMON_DESPAWN, it);
             it->DisappearAndDie();
         }
         me->GetCreatureListWithEntryInGrid(lCrea, NPC_DREAD_GUARD, 30.0f);
         for (const auto& it : lCrea)
         {
             if (it->IsAlive())
-                DoScriptText(SAY_DREAD_GUARD_DESPAWN, it);
+                DoScriptText(SAY_DEMON_DESPAWN, it);
             it->DisappearAndDie();
         }
         reset();
@@ -383,7 +382,7 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
             crea->SetHomePosition(x, y, z, 0);
             crea->GetMotionMaster()->Clear();
             crea->GetMotionMaster()->Initialize();
-            crea->GetMotionMaster()->MovePoint(1, x, y, z, true);
+            crea->GetMotionMaster()->MovePoint(1, x, y, z, MOVE_PATHFINDING);
         }
     }
     void SummonGuard()
@@ -398,7 +397,7 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
             crea->SetHomePosition(x, y, z, 0);
             crea->GetMotionMaster()->Clear();
             crea->GetMotionMaster()->Initialize();
-            crea->GetMotionMaster()->MovePoint(1, x, y, z, true);
+            crea->GetMotionMaster()->MovePoint(1, x, y, z, MOVE_PATHFINDING);
         }
     }
     EventLocations spawnPoints[18];//not using m_wait though
@@ -428,7 +427,7 @@ struct go_pedestal_of_immol_tharAI: public GameObjectAI
                             crea->SetHomePosition(x, y, z, 0);
                             crea->GetMotionMaster()->Clear();
                             crea->GetMotionMaster()->Initialize();
-                            crea->GetMotionMaster()->MovePoint(1, x, y, z, true);
+                            crea->GetMotionMaster()->MovePoint(1, x, y, z, MOVE_PATHFINDING);
                         }
                     }
                     waveTimer = 60000;
@@ -731,7 +730,7 @@ bool GOHello_go_ritual_node(Player* pPlayer, GameObject* pGo)
             pPedestalAI->NodeUpped(pGo);
     }
     else
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Dreadsteed Ritual : GOBJ_PEDESTAL not found");
+        sLog.Out(LOG_SCRIPTS, LOG_LVL_MINIMAL, "Dreadsteed Ritual : GOBJ_PEDESTAL not found");
     return true;
 }
 

@@ -34,7 +34,7 @@
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "Mail.h"
-
+#include "TransactionLog.h"
 #include "Policies/SingletonImp.h"
 
 INSTANTIATE_SINGLETON_1(AuctionHouseMgr);
@@ -345,8 +345,8 @@ void AuctionHouseMgr::LoadAuctionHouses()
 
 void AuctionHouseMgr::LoadAuctionItems()
 {
-    //                                                     0               1                    2        3           4          5        6               7                     8             9       10                           11
-    QueryResult* result = CharacterDatabase.Query("SELECT `creator_guid`, `gift_creator_guid`, `count`, `duration`, `charges`, `flags`, `enchantments`, `random_property_id`, `durability`, `text`, `item_guid`, `item_instance`.`item_id` FROM `auction` JOIN `item_instance` ON `item_guid` = `guid`");
+    //                                                                     0               1                    2        3           4          5        6               7                     8             9       10                           11
+    std::unique_ptr<QueryResult> result = CharacterDatabase.Query("SELECT `creator_guid`, `gift_creator_guid`, `count`, `duration`, `charges`, `flags`, `enchantments`, `random_property_id`, `durability`, `text`, `item_guid`, `item_instance`.`item_id` FROM `auction` JOIN `item_instance` ON `item_guid` = `guid`");
 
     if (!result)
     {
@@ -390,7 +390,6 @@ void AuctionHouseMgr::LoadAuctionItems()
         ++count;
     }
     while (result->NextRow());
-    delete result;
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u auction items", count);
@@ -398,7 +397,7 @@ void AuctionHouseMgr::LoadAuctionItems()
 
 void AuctionHouseMgr::LoadAuctions()
 {
-    QueryResult* result = CharacterDatabase.Query("SELECT COUNT(*) FROM auction");
+    std::unique_ptr<QueryResult> result = CharacterDatabase.Query("SELECT `id`, `house_id`, `item_guid`, `item_id`, `seller_guid`, `buyout_price`, `expire_time`, `buyer_guid`, `last_bid`, `start_bid`, `deposit` FROM `auction`");
     if (!result)
     {
         BarGoLink bar(1);
@@ -408,34 +407,12 @@ void AuctionHouseMgr::LoadAuctions()
         return;
     }
 
-    Field* fields = result->Fetch();
-    uint32 AuctionCount = fields[0].GetUInt32();
-    delete result;
-
-    if (!AuctionCount)
-    {
-        BarGoLink bar(1);
-        bar.step();
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded 0 auctions. DB table `auction` is empty.");
-        return;
-    }
-
-    result = CharacterDatabase.Query("SELECT `id`, `house_id`, `item_guid`, `item_id`, `seller_guid`, `buyout_price`, `expire_time`, `buyer_guid`, `last_bid`, `start_bid`, `deposit` FROM `auction`");
-    if (!result)
-    {
-        BarGoLink bar(1);
-        bar.step();
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded 0 auctions. DB table `auction` is empty.");
-        return;
-    }
-
-    BarGoLink bar(AuctionCount);
+    BarGoLink bar(result->GetRowCount());
+    uint32 count = 0;
 
     do
     {
-        fields = result->Fetch();
+        Field* fields = result->Fetch();
 
         bar.step();
 
@@ -469,7 +446,7 @@ void AuctionHouseMgr::LoadAuctions()
 
         auction->auctionHouseEntry = sAuctionHouseStore.LookupEntry(houseId);
 
-        if (!houseId)
+        if (!auction->auctionHouseEntry)
         {
             // need for send mail, use goblin auctionhouse
             auction->auctionHouseEntry = sAuctionHouseStore.LookupEntry(7);
@@ -491,13 +468,12 @@ void AuctionHouseMgr::LoadAuctions()
         }
 
         GetAuctionsMap(auction->auctionHouseEntry)->AddAuction(auction);
-
+        ++count;
     }
     while (result->NextRow());
-    delete result;
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u auctions", AuctionCount);
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u auctions", count);
 }
 
 void AuctionHouseMgr::AddAItem(Item* it)

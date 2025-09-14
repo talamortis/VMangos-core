@@ -50,9 +50,7 @@ void WorldSession::HandleRepopRequestOpcode(WorldPacket& /*recv_data*/)
 {
     // recv_data.read_skip<uint8>(); client crash
 
-    auto player = GetPlayer();
-
-    if (player->IsAlive() || player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+    if (_player->IsAlive() || _player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         return;
 
     // the world update order is sessions, players, creatures
@@ -60,24 +58,24 @@ void WorldSession::HandleRepopRequestOpcode(WorldPacket& /*recv_data*/)
     // creatures can kill players
     // so if the server is lagging enough the player can
     // release spirit after he's killed but before he is updated
-    if (player->GetDeathState() == JUST_DIED)
+    if (_player->GetDeathState() == JUST_DIED)
     {
-        sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "HandleRepopRequestOpcode: got request after player %s(%d) was killed and before he was updated", player->GetName(), player->GetGUIDLow());
-        player->KillPlayer();
+        sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "HandleRepopRequestOpcode: got request after player %s(%d) was killed and before he was updated", _player->GetName(), _player->GetGUIDLow());
+        _player->KillPlayer();
     }
 
-    player->BuildPlayerRepop();
-    player->ScheduleRepopAtGraveyard();
+    _player->BuildPlayerRepop();
+    _player->ScheduleRepopAtGraveyard();
 }
 
 class WhoListClientQueryTask
 {
 public:
     uint32 accountId;
-    uint32 level_min, level_max, racemask, classmask, zones_count, str_count;
-    uint32 zoneids[10];                                     // 10 is client limit
+    uint32 levelMin, levelMax, raceMask, classMask, zonesCount, strCount;
+    uint32 zoneIds[10];                                     // 10 is client limit
     std::wstring str[4];                                    // 4 is client limit
-    std::wstring wplayer_name, wguild_name;
+    std::wstring wplayerName, wguildName;
     void operator()()
     {
         WorldSession* sess = sWorld.FindSession(accountId);
@@ -87,7 +85,7 @@ public:
         if (!sess->GetPlayer() || !sess->GetPlayer()->IsInWorld())
             return;
 
-        uint32 clientcount = 0;
+        uint32 clientCount = 0;
         Team const team = sess->GetPlayer()->GetTeam();
         AccountTypes const security = sess->GetSecurity();
         bool const allowTwoSideWhoList = sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_WHO_LIST);
@@ -97,8 +95,8 @@ public:
         bool const notInBattleground = !((zone == 2597) || (zone == 3277) || (zone == 3358));
 
         WorldPacket data(SMSG_WHO, 50);                         // guess size
-        data << uint32(clientcount);                            // clientcount place holder, listed count
-        data << uint32(clientcount);                            // clientcount place holder, online count
+        data << uint32(clientCount);                            // clientCount place holder, listed count
+        data << uint32(clientCount);                            // clientCount place holder, online count
 
         // TODO: Guard Player map
         HashMapHolder<Player>::MapType& m = sObjectAccessor.GetPlayers();
@@ -127,7 +125,7 @@ public:
 
             // check if target's level is in level range
             uint32 lvl = pPlayer->GetLevel();
-            if (lvl < level_min || lvl > level_max)
+            if (lvl < levelMin || lvl > levelMax)
                 continue;
 
             // check if target is globally visible for player
@@ -135,13 +133,13 @@ public:
                 continue;
 
             // check if class matches classmask
-            uint32 class_ = pPlayer->GetClass();
-            if (!(classmask & (1 << class_)))
+            uint32 classId = pPlayer->GetClass();
+            if (!(classMask & (1 << classId)))
                 continue;
 
             // check if race matches racemask
-            uint32 race = pPlayer->GetRace();
-            if (!(racemask & (1 << race)))
+            uint32 raceId = pPlayer->GetRace();
+            if (!(raceMask & (1 << raceId)))
                 continue;
 
             std::string pname = pPlayer->GetName();
@@ -150,7 +148,7 @@ public:
                 continue;
             wstrToLower(wpname);
 
-            if (!(wplayer_name.empty() || wpname.find(wplayer_name) != std::wstring::npos))
+            if (!(wplayerName.empty() || wpname.find(wplayerName) != std::wstring::npos))
                 continue;
 
             std::string gname = sGuildMgr.GetGuildNameById(pPlayer->GetGuildId());
@@ -159,70 +157,70 @@ public:
                 continue;
             wstrToLower(wgname);
 
-            if (!(wguild_name.empty() || wgname.find(wguild_name) != std::wstring::npos))
+            if (!(wguildName.empty() || wgname.find(wguildName) != std::wstring::npos))
                 continue;
+            
+            uint32 pzoneId = pPlayer->GetCachedZoneId();
 
-            uint32 pzoneid = pPlayer->GetCachedZoneId();
-
-            bool z_show = true;
-            for (uint32 i = 0; i < zones_count; ++i)
+            bool zShow = true;
+            for (uint32 i = 0; i < zonesCount; ++i)
             {
-                if (zoneids[i] == pzoneid)
+                if (zoneIds[i] == pzoneId)
                 {
                     // World of Warcraft Client Patch 1.7.0 (2005-09-13)
                     // Using the / who command while in a Battleground instance will now only display players in your instance.
-                    z_show = (zone != pzoneid) || notInBattleground || (sess->GetPlayer()->GetInstanceId() == pPlayer->GetInstanceId());
+                    zShow = (zone != pzoneId) || notInBattleground || (sess->GetPlayer()->GetInstanceId() == pPlayer->GetInstanceId());
                     break;
                 }
 
-                z_show = false;
+                zShow = false;
             }
-            if (!z_show)
+            if (!zShow)
                 continue;
 
-            std::string aname;
-            if (const auto *areaEntry = AreaEntry::GetById(pzoneid))
+            std::string aName;
+            if (const auto *areaEntry = AreaEntry::GetById(pzoneId))
             {
-                aname = areaEntry->Name;
-                sObjectMgr.GetAreaLocaleString(areaEntry->Id, sess->GetSessionDbLocaleIndex(), &aname);
+                aName = areaEntry->Name;
+                sObjectMgr.GetAreaLocaleString(areaEntry->Id, sess->GetSessionDbLocaleIndex(), &aName);
             }
 
-            bool s_show = true;
-            for (uint32 i = 0; i < str_count; ++i)
+            bool sShow = true;
+            for (uint32 i = 0; i < strCount; ++i)
             {
                 if (!str[i].empty())
                 {
                     if (wgname.find(str[i]) != std::wstring::npos ||
-                            wpname.find(str[i]) != std::wstring::npos ||
-                            Utf8FitTo(aname, str[i]))
+                        wpname.find(str[i]) != std::wstring::npos ||
+                        Utf8FitTo(aName, str[i]))
                     {
-                        s_show = true;
+                        sShow = true;
                         break;
                     }
-                    s_show = false;
+                    sShow = false;
                 }
             }
-            if (!s_show)
+            if (!sShow)
                 continue;
 
             data << pname;                                      // player name
             data << gname;                                      // guild name
             data << uint32(lvl);                                // player level
-            data << uint32(class_);                             // player class
-            data << uint32(race);                               // player race
-            data << uint32(pzoneid);                            // player zone id
+            data << uint32(classId);                            // player class
+            data << uint32(raceId);                             // player race
+            data << uint32(pzoneId);                            // player zone id
 
 #if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_8_4
             data << uint32(pPlayer->GetWhoListPartyStatus());   // not actually displayed anywhere
 #endif
             // 50 is maximum player count sent to client
-            if ((++clientcount) == 49)
+            if ((++clientCount) == 49)
                 break;
         }
 
         uint32 count = m.size();
-        data.put(0, clientcount);                               // insert right count, listed count
-        data.put(4, count > 49 ? count : clientcount);          // insert right count, online count
+        data.put(0, clientCount);                               // insert right count, listed count
+        data.put(4, count > 49 ? count : clientCount);          // insert right count, online count
 
         sess->SendPacket(&data);
     }
@@ -235,45 +233,42 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
 
     WhoListClientQueryTask task;
     task.accountId = GetAccountId();
-    std::string player_name, guild_name;
+    std::string playerName, guildName;
 
+    recv_data >> task.levelMin;                                // maximal player level, default 0
+    recv_data >> task.levelMax;                                // minimal player level, default 100 (MAX_LEVEL)
+    recv_data >> playerName;                                   // player name, case sensitive...
+    recv_data >> guildName;                                    // guild name, case sensitive...
+    recv_data >> task.raceMask;                                // race mask
+    recv_data >> task.classMask;                               // class mask
+    recv_data >> task.zonesCount;                              // zones count, client limit=10 (2.0.10)
 
-    recv_data >> task.level_min;                               // maximal player level, default 0
-    recv_data >> task.level_max;                               // minimal player level, default 100 (MAX_LEVEL)
-    recv_data >> player_name;                                   // player name, case sensitive...
-
-    recv_data >> guild_name;                                    // guild name, case sensitive...
-
-    recv_data >> task.racemask;                                // race mask
-    recv_data >> task.classmask;                               // class mask
-    recv_data >> task.zones_count;                             // zones count, client limit=10 (2.0.10)
-
-    if (task.zones_count > 10)
+    if (task.zonesCount > 10)
     {
         // delete task;
-        return;                                                 // can't be received from real client or broken packet
+        return;                                                // can't be received from real client or broken packet
     }
-    for (uint32 i = 0; i < task.zones_count; ++i)
+    for (uint32 i = 0; i < task.zonesCount; ++i)
     {
         uint32 temp;
-        recv_data >> temp;                                  // zone id, 0 if zone is unknown...
-        task.zoneids[i] = temp;
-        sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Zone %u: %u", i, task.zoneids[i]);
+        recv_data >> temp;                                     // zone id, 0 if zone is unknown...
+        task.zoneIds[i] = temp;
+        sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Zone %u: %u", i, task.zoneIds[i]);
     }
 
-    recv_data >> task.str_count;                                 // user entered strings count, client limit=4 (checked on 2.0.10)
+    recv_data >> task.strCount;                                // user entered strings count, client limit=4 (checked on 2.0.10)
 
-    if (task.str_count > 4)
+    if (task.strCount > 4)
     {
         // delete task;
-        return;                                             // can't be received from real client or broken packet
+        return;                                                // can't be received from real client or broken packet
     }
-    sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Minlvl %u, maxlvl %u, name %s, guild %s, racemask %u, classmask %u, zones %u, strings %u", task.level_min, task.level_max, player_name.c_str(), guild_name.c_str(), task.racemask, task.classmask, task.zones_count, task.str_count);
+    sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Minlvl %u, maxlvl %u, name %s, guild %s, racemask %u, classmask %u, zones %u, strings %u", task.levelMin, task.levelMax, playerName.c_str(), guildName.c_str(), task.raceMask, task.classMask, task.zonesCount, task.strCount);
 
-    for (uint32 i = 0; i < task.str_count; ++i)
+    for (uint32 i = 0; i < task.strCount; ++i)
     {
         std::string temp;
-        recv_data >> temp;                                  // user entered string, it used as universal search pattern(guild+player name)?
+        recv_data >> temp;                                     // user entered string, it used as universal search pattern(guild+player name)?
 
         if (!Utf8toWStr(temp, task.str[i]))
             continue;
@@ -283,18 +278,18 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
         sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "String %u: %s", i, temp.c_str());
     }
 
-    if (!(Utf8toWStr(player_name, task.wplayer_name) && Utf8toWStr(guild_name, task.wguild_name)))
+    if (!(Utf8toWStr(playerName, task.wplayerName) && Utf8toWStr(guildName, task.wguildName)))
     {
         // delete task;
         return;
     }
-    wstrToLower(task.wplayer_name);
-    wstrToLower(task.wguild_name);
+    wstrToLower(task.wplayerName);
+    wstrToLower(task.wguildName);
 
     // client send in case not set max level value 100 but mangos support 255 max level,
     // update it to show GMs with characters after 100 level
-    if (task.level_max >= MAX_LEVEL)
-        task.level_max = PLAYER_STRONG_MAX_LEVEL;
+    if (task.levelMax >= MAX_LEVEL)
+        task.levelMax = PLAYER_STRONG_MAX_LEVEL;
 
     SetReceivedWhoRequest(true);
     sWorld.AddAsyncTask(std::move(task));
@@ -430,23 +425,6 @@ void WorldSession::HandleZoneUpdateOpcode(WorldPacket& recv_data)
     }
 }
 
-void WorldSession::HandleSetTargetOpcode(WorldPacket& recv_data)
-{
-    // When this packet send?
-    ObjectGuid guid ;
-    recv_data >> guid;
-
-    _player->SetTargetGuid(guid);
-
-    // update reputation list if need
-    Unit* unit = ObjectAccessor::GetUnit(*_player, guid);   // can select group members at diff maps
-    if (!unit)
-        return;
-
-    if (FactionTemplateEntry const* factionTemplateEntry = sObjectMgr.GetFactionTemplateEntry(unit->GetFactionTemplateId()))
-        _player->GetReputationMgr().SetVisible(factionTemplateEntry);
-}
-
 void WorldSession::HandleSetSelectionOpcode(WorldPacket& recv_data)
 {
     ObjectGuid guid;
@@ -458,8 +436,9 @@ void WorldSession::HandleSetSelectionOpcode(WorldPacket& recv_data)
     Unit* unit = ObjectAccessor::GetUnit(*_player, guid);   // can select group members at diff maps
 
     if (unit)
-        if (FactionTemplateEntry const* factionTemplateEntry = sObjectMgr.GetFactionTemplateEntry(unit->GetFactionTemplateId()))
-            _player->GetReputationMgr().SetVisible(factionTemplateEntry);
+        if (FactionTemplateEntry const* factionTemplateEntry = unit->GetFactionTemplateEntry())
+            if (!factionTemplateEntry->IsHostileToPlayerTeam(*_player->GetFactionTemplateEntry()))
+                _player->GetReputationMgr().SetVisible(factionTemplateEntry);
 
     // Drop combo points only for rogues and druids
     // Warriors use combo points internally, do no reset for everyone
@@ -485,10 +464,10 @@ void WorldSession::HandleSetSelectionOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleStandStateChangeOpcode(WorldPacket& recv_data)
 {
-    uint32 animstate;
-    recv_data >> animstate;
+    uint32 animState;
+    recv_data >> animState;
 
-    switch (animstate)
+    switch (animState)
     {
         case UNIT_STAND_STATE_STAND:
         case UNIT_STAND_STATE_SIT:
@@ -504,7 +483,7 @@ void WorldSession::HandleStandStateChangeOpcode(WorldPacket& recv_data)
 
     _player->InterruptSpellsWithChannelFlags(AURA_INTERRUPT_ANIM_CANCELS);
     _player->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ANIM_CANCELS);
-    _player->SetStandState(animstate);
+    _player->SetStandState(animState);
 }
 
 void WorldSession::HandleFriendListOpcode(WorldPacket& recv_data)
@@ -630,13 +609,13 @@ void WorldSession::HandleDelIgnoreOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
 {
-    uint32 suggestion, contentlen;
+    uint32 suggestion, contentLen;
     std::string content;
-    uint32 typelen;
+    uint32 typeLen;
     std::string type;
 
-    recv_data >> suggestion >> contentlen >> content;
-    recv_data >> typelen >> type;
+    recv_data >> suggestion >> contentLen >> content;
+    recv_data >> typeLen >> type;
 }
 
 void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
@@ -731,8 +710,8 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         return;
     }
 
-    if (sScriptMgr.OnAreaTrigger(pPlayer, pTrigger))
-        return;
+    if (pTrigger->script_id || pTrigger->script_name)
+        pPlayer->GetMap()->StartAreaTriggerScript(pTrigger, pPlayer);
 
     uint32 quest_id = sObjectMgr.GetQuestForAreaTrigger(triggerId);
     if (quest_id && pPlayer->IsAlive() && pPlayer->IsActiveQuest(quest_id))
@@ -763,7 +742,7 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         if ((pPlayer->GetLevel() < bg->GetMinLevel() || pPlayer->GetLevel() > bg->GetMaxLevel()) ||
             (pPlayer->GetTeam() != pBgEntrance->team))
         {
-            SendAreaTriggerMessage("You must be in the %s and at least %u%s level to enter.", pPlayer->GetTeam() == ALLIANCE ? "Alliance" : "Horde", bg->GetMinLevel(), bg->GetMinLevel() % 2 ? "st" : "th");
+            SendAreaTriggerMessage("You must be in the %s and at least %u%s level to enter.", pPlayer->GetTeam() == ALLIANCE ? "Horde" : "Alliance", bg->GetMinLevel(), bg->GetMinLevel() % 2 ? "st" : "th");
             return;
         }
 
@@ -775,9 +754,10 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
     if (pPlayer->InBattleGround())
     {
         if (BattleGround* bg = pPlayer->GetBattleGround())
-            bg->HandleAreaTrigger(pPlayer, triggerId);
-        return;
+            if (bg->HandleAreaTrigger(pPlayer, triggerId))
+                return;
     }
+
     if (ZoneScript* pZoneScript = pPlayer->GetZoneScript())
     {
         if (pZoneScript->HandleAreaTrigger(_player, triggerId))
@@ -803,31 +783,31 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         // Special case prior Patch 1.3 to revive your corpse if dead in Molten Core
         if (sWorld.GetWowPatch() <= WOW_PATCH_102)
         {
-            if (corpseMapId == 409 && triggerId == 1466)
+            if (corpseMapId == MAP_MOLTEN_CORE && triggerId == 1466)
             {
                 pPlayer->ResurrectPlayer(0.5f);
                 pPlayer->SpawnCorpseBones();
-                pPlayer->TeleportTo(230, 458.32f, 26.52f, -70.67f, 4.95f); // Blackrock Depths
-                // pPlayer->TeleportTo(409, 1082.04f, -474.596f, -107.762f, 5.02623f); // Molten Core
+                pPlayer->TeleportTo(MAP_BLACKROCK_DEPTHS, 458.32f, 26.52f, -70.67f, 4.95f); // Blackrock Depths
+                // pPlayer->TeleportTo(MAP_MOLTEN_CORE, 1082.04f, -474.596f, -107.762f, 5.02623f); // Molten Core
                 return;
             }
         }
 
         // check back way from corpse to entrance
-        uint32 instance_map = corpseMapId;
+        uint32 instanceMap = corpseMapId;
         do
         {
             // most often fast case
-            if (instance_map == pTargetMap->id)
+            if (instanceMap == pTargetMap->id)
                 break;
 
-            MapEntry const* instance = sMapStorage.LookupEntry<MapEntry>(instance_map);
-            instance_map = instance && instance->IsDungeon() ? instance->parent : 0;
+            MapEntry const* instance = sMapStorage.LookupEntry<MapEntry>(instanceMap);
+            instanceMap = instance && instance->IsDungeon() ? instance->parent : 0;
         }
-        while (instance_map);
+        while (instanceMap);
 
         // corpse not in dungeon or some linked deep dungeons
-        if (!instance_map)
+        if (!instanceMap)
         {
             pPlayer->GetSession()->SendAreaTriggerMessage("You cannot enter %s while in ghost form.", pTargetMap->name);
             return;
@@ -841,7 +821,11 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
 
     if (!pPlayer->IsGameMaster() && !pPlayer->HasCheatOption(PLAYER_CHEAT_TRIGGER_PASS))
     {
-        bool const bLevelCheck = pPlayer->GetLevel() < pTeleTrigger->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL);
+        // World of Warcraft Client Patch 1.4.1 (2005-05-03)
+        // - Added minimum level requirements to all instances to prevent 
+        //   exploitive behavior.The minimum levels are very generous and should
+        //   not affect the normal course of gameplay.
+        bool const bLevelCheck = pPlayer->GetLevel() < pTeleTrigger->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL) && sWorld.GetWowPatch() >= WOW_PATCH_104;
         bool const bConditionCheck = pTeleTrigger->requiredCondition && !IsConditionSatisfied(pTeleTrigger->requiredCondition, pPlayer, pPlayer->GetMap(), pPlayer, CONDITION_FROM_AREATRIGGER);
         
         if (bLevelCheck || bConditionCheck)
@@ -855,14 +839,14 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
             {
                 char const* message = pTeleTrigger->message.c_str();
 
-                int loc_idx = GetSessionDbLocaleIndex();
-                if (loc_idx >= 0)
+                int locIdx = GetSessionDbLocaleIndex();
+                if (locIdx >= 0)
                 {
                     AreaTriggerLocale const* locale = sObjectMgr.GetAreaTriggerLocale(triggerId);
                     if (locale)
                     {
-                        if (locale->message.size() > size_t(loc_idx) && !locale->message[loc_idx].empty())
-                            message = locale->message[loc_idx].c_str();
+                        if (locale->message.size() > size_t(locIdx) && !locale->message[locIdx].empty())
+                            message = locale->message[locIdx].c_str();
                     }
                 }
 
@@ -879,12 +863,24 @@ void WorldSession::HandleUpdateAccountData(WorldPacket& recv_data)
 {
     uint32 type, decompressedSize;
     recv_data >> type >> decompressedSize;
-    if (type > NUM_ACCOUNT_DATA_TYPES)
+
+    NewAccountData::AccountDataType dataType;
+    if (GetGameBuild() <= CLIENT_BUILD_1_8_4)
+        dataType = ConvertOldAccountDataToNew(type);
+    else
+        dataType = (NewAccountData::AccountDataType)type;
+
+    if (dataType >= NewAccountData::NUM_ACCOUNT_DATA_TYPES)
+    {
+        std::stringstream oss;
+        oss << "Client sent invalid account data type " << type << " in CMSG_UPDATE_ACCOUNT_DATA.";
+        ProcessAnticheatAction("PassiveAnticheat", oss.str().c_str(), CHEAT_ACTION_LOG);
         return;
+    }
 
     if (decompressedSize == 0)                              // erase
     {
-        SetAccountData(AccountDataType(type), "");
+        SetAccountData(dataType, "");
         return;
     }
 
@@ -905,23 +901,35 @@ void WorldSession::HandleUpdateAccountData(WorldPacket& recv_data)
     recv_data.rpos(recv_data.wpos());                       // uncompress read (recv_data.size() - recv_data.rpos())
 
     std::string adata((char*)dest.data(), dest.size());
-    SetAccountData(AccountDataType(type), adata);
+    SetAccountData(dataType, adata);
 }
 
 void WorldSession::HandleRequestAccountData(WorldPacket& recv_data)
 {
     uint32 type;
     recv_data >> type;
-    if (type > NUM_ACCOUNT_DATA_TYPES)
-        return;
 
-    AccountData* adata = GetAccountData(AccountDataType(type));
+    NewAccountData::AccountDataType dataType;
+    if (GetGameBuild() <= CLIENT_BUILD_1_8_4)
+        dataType = ConvertOldAccountDataToNew(type);
+    else
+        dataType = (NewAccountData::AccountDataType)type;
+
+    if (dataType >= NewAccountData::NUM_ACCOUNT_DATA_TYPES)
+    {
+        std::stringstream oss;
+        oss << "Client requested invalid account data type " << type << " in CMSG_REQUEST_ACCOUNT_DATA.";
+        ProcessAnticheatAction("PassiveAnticheat", oss.str().c_str(), CHEAT_ACTION_LOG);
+        return;
+    }
+
+    AccountData* adata = GetAccountData(dataType);
 
     uint32 size = adata->data.size();
     if (!size)
     {
         WorldPacket data(SMSG_UPDATE_ACCOUNT_DATA, 4 + 4);
-        data << uint32(type);                                // type (0-7)
+        data << uint32(type);                                // use the original type sent by client
         data << uint32(0);                                   // decompressed length
         SendPacket(&data);
     }
@@ -934,7 +942,7 @@ void WorldSession::HandleRequestAccountData(WorldPacket& recv_data)
         compress(const_cast<uint8*>(dest.contents()), &destSize, (uint8*)adata->data.c_str(), size);
 
         WorldPacket data(SMSG_UPDATE_ACCOUNT_DATA, 4 + 4 + destSize + 1);
-        data << uint32(type);                                   // type (0-7)
+        data << uint32(type);                                   // use the original type sent by client
         data << uint32(size);                                   // decompressed length
         data.append(dest);                                      // compressed data
         SendPacket(&data);
@@ -1178,9 +1186,9 @@ void WorldSession::HandleMoveSetRawPosition(WorldPacket& recv_data)
 {
     // write in client console: setrawpos x y z o
     // For now, it is implemented like worldport but on the same map. Consider using MSG_MOVE_SET_RAW_POSITION_ACK.
-    float PosX, PosY, PosZ, PosO;
-    recv_data >> PosX >> PosY >> PosZ >> PosO;
-    //sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Set to: X=%f, Y=%f, Z=%f, orient=%f", PosX, PosY, PosZ, PosO);
+    float posX, posY, posZ, posO;
+    recv_data >> posX >> posY >> posZ >> posO;
+    //sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Set to: X=%f, Y=%f, Z=%f, orient=%f", posX, posY, posZ, posO);
 
     if (!GetPlayer()->IsInWorld() || GetPlayer()->IsTaxiFlying())
     {
@@ -1189,7 +1197,7 @@ void WorldSession::HandleMoveSetRawPosition(WorldPacket& recv_data)
     }
 
     if (GetSecurity() >= SEC_ADMINISTRATOR)
-        GetPlayer()->NearTeleportTo(PosX, PosY, PosZ, PosO);
+        GetPlayer()->NearTeleportTo(posX, posY, posZ, posO);
     else
         SendNotification(LANG_YOU_NOT_HAVE_PERMISSION);
 
@@ -1198,8 +1206,8 @@ void WorldSession::HandleMoveSetRawPosition(WorldPacket& recv_data)
 
 void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
 {
-    std::string charname;
-    recv_data >> charname;
+    std::string charName;
+    recv_data >> charName;
 
     if (GetSecurity() < SEC_ADMINISTRATOR)
     {
@@ -1207,26 +1215,26 @@ void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
         return;
     }
 
-    if (charname.empty() || !normalizePlayerName(charname))
+    if (charName.empty() || !normalizePlayerName(charName))
     {
         SendNotification(LANG_NEED_CHARACTER_NAME);
         return;
     }
 
-    Player* plr = sObjectMgr.GetPlayer(charname.c_str());
+    Player* plr = sObjectMgr.GetPlayer(charName.c_str());
 
     if (!plr)
     {
-        SendNotification(LANG_PLAYER_NOT_EXIST_OR_OFFLINE, charname.c_str());
+        SendNotification(LANG_PLAYER_NOT_EXIST_OR_OFFLINE, charName.c_str());
         return;
     }
 
-    uint32 accid = plr->GetSession()->GetAccountId();
+    uint32 accId = plr->GetSession()->GetAccountId();
 
-    QueryResult* result = LoginDatabase.PQuery("SELECT `username`, `email`, `last_ip` FROM `account` WHERE `id`=%u", accid);
+    std::unique_ptr<QueryResult> result = LoginDatabase.PQuery("SELECT `username`, `email`, `last_ip` FROM `account` WHERE `id`=%u", accId);
     if (!result)
     {
-        SendNotification(LANG_ACCOUNT_FOR_PLAYER_NOT_FOUND, charname.c_str());
+        SendNotification(LANG_ACCOUNT_FOR_PLAYER_NOT_FOUND, charName.c_str());
         return;
     }
 
@@ -1237,17 +1245,15 @@ void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
     std::string email = fields[1].GetCppString();
     if (email.empty())
         email = "Unknown";
-    std::string lastip = fields[2].GetCppString();
-    if (lastip.empty())
-        lastip = "Unknown";
+    std::string lastIp = fields[2].GetCppString();
+    if (lastIp.empty())
+        lastIp = "Unknown";
 
-    std::string msg = charname + "'s " + "account is " + acc + ", e-mail: " + email + ", last ip: " + lastip;
+    std::string msg = charName + "'s " + "account is " + acc + ", e-mail: " + email + ", last ip: " + lastIp;
 
     WorldPacket data(SMSG_WHOIS, msg.size() + 1); // max CString length allowed: 256
     data << msg;
     _player->GetSession()->SendPacket(&data);
-
-    delete result;
 }
 
 void WorldSession::HandleFarSightOpcode(WorldPacket& recv_data)
@@ -1293,7 +1299,6 @@ void WorldSession::HandleRequestPetInfoOpcode(WorldPacket& /*recv_data */)
 
 void WorldSession::HandleWardenDataOpcode(WorldPacket& recv_data)
 {
-#ifdef USE_ANTICHEAT
     if (!m_warden)
     {
         sLog.Player(GetAccountId(), LOG_ANTICHEAT, LOG_LVL_MINIMAL,
@@ -1303,5 +1308,4 @@ void WorldSession::HandleWardenDataOpcode(WorldPacket& recv_data)
 
     std::lock_guard<std::mutex> lock(m_warden->m_packetQueueMutex);
     m_warden->m_packetQueue.emplace_back(std::move(recv_data));
-#endif
 }

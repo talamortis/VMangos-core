@@ -232,7 +232,7 @@ struct boss_heiganAI : public ScriptedAI
         Creature* fissureCreature = m_creature->SummonCreature(NPC_PLAGUE_WAVE, 2773.0f, -3684.0f, 292.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 1000);
         if (!fissureCreature)
         {
-            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Heigan: failed spawning fissure creature");
+            sLog.Out(LOG_SCRIPTS, LOG_LVL_ERROR, "Heigan: failed spawning fissure creature");
             return;
         }
 
@@ -352,10 +352,10 @@ struct boss_heiganAI : public ScriptedAI
         ++it; // skip the tank
         for (it; it != tl.end(); it++)
         {
-            if (Unit* pUnit = m_creature->GetMap()->GetUnit((*it)->getUnitGuid()))
+            if (Player* pUnit = (*it)->getTarget()->ToPlayer())
             {
                 // Candidates are only alive players who have not yet been ported during this phase rotation
-                if (pUnit->IsPlayer() && pUnit->IsAlive()
+                if (pUnit->IsAlive()
                     && std::find(portedPlayersThisPhase.begin(), portedPlayersThisPhase.end(), pUnit->GetObjectGuid()) == portedPlayersThisPhase.end())
                 {
                     candidates.push_back(pUnit);
@@ -399,9 +399,9 @@ struct boss_heiganAI : public ScriptedAI
         bool found_mana_in_range = false;
         for (const auto it : tl)
         {
-            if (Unit* pTarget = m_creature->GetMap()->GetUnit(it->getUnitGuid()))
+            if (Player* pTarget = it->getTarget()->ToPlayer())
             {
-                if (pTarget->GetPowerType() == POWER_MANA && pTarget->GetTypeId() == TYPEID_PLAYER && pTarget->IsAlive())
+                if (pTarget->GetPowerType() == POWER_MANA && pTarget->IsAlive())
                 {
                     if (m_creature->GetDistance3dToCenter(it->getTarget()) < 28.0f)
                     {
@@ -485,11 +485,32 @@ CreatureAI* GetAI_boss_heigan(Creature* pCreature)
     return new boss_heiganAI(pCreature);
 }
 
+// 29310 - Mana Burn (Heigan, naxxramas)
+struct HeiganManaBurnScript : SpellScript
+{
+    void OnSetTargetMap(Spell* /*spell*/, SpellEffectIndex /*effIdx*/, uint32& /*targetMode*/, float& radius, uint32& /*unMaxTargets*/, bool& /*selectClosestTargets*/) const final
+    {
+        // Without a bigger raidus its possible to tank heigan in one corner of the platform, and have ranged stay in the other corner
+        radius = 28.0f;
+    }
+};
+
+SpellScript* GetScript_HeiganManaBurn(SpellEntry const*)
+{
+    return new HeiganManaBurnScript();
+}
+
 void AddSC_boss_heigan()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_heigan";
-    NewScript->GetAI = &GetAI_boss_heigan;
-    NewScript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_heigan";
+    pNewScript->GetAI = &GetAI_boss_heigan;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "spell_heigan_mana_burn";
+    pNewScript->GetSpellScript = &GetScript_HeiganManaBurn;
+    pNewScript->RegisterSelf();
 }
